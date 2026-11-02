@@ -4,13 +4,23 @@
 
 ## 1. Контейнер
 
-Debian 12 или новее, непривилегированный LXC: 1 vCPU, 1 ГБ RAM, 10 ГБ диска. Нужны Node 22 LTS, `corepack enable` (pnpm возьмёт версию из `packageManager`), git, curl.
+Debian 12 или новее, непривилегированный LXC: 1 vCPU, 1 ГБ RAM, 10 ГБ диска. Нужны Node 22 LTS, `corepack enable` (pnpm возьмёт версию из `packageManager`), git, curl, а также `build-essential python3` на случай, если для `better-sqlite3` не скачается готовая сборка.
+
+Репозиторий `dmgening/de-trainer` приватный: контейнер читает его по deploy key. Ключ создаётся в контейнере, публичная часть добавляется в GitHub только на чтение:
+
+```bash
+ssh-keygen -t ed25519 -N '' -C de-trainer-lxc -f /root/.ssh/id_ed25519
+ssh-keyscan github.com >> /root/.ssh/known_hosts
+cat /root/.ssh/id_ed25519.pub
+# на маке: gh repo deploy-key add <файл с ключом> --repo dmgening/de-trainer --title homelab-lxc
+# или GitHub → Settings → Deploy keys → Add, без «Allow write access»
+```
 
 ```bash
 useradd --system --home /var/lib/de-trainer --shell /usr/sbin/nologin de-trainer
 mkdir -p /opt/de-trainer/releases /var/lib/de-trainer /etc/de-trainer
 chown de-trainer:de-trainer /var/lib/de-trainer && chmod 700 /var/lib/de-trainer
-git clone <repo-url> /opt/de-trainer/repo
+git clone git@github.com:dmgening/de-trainer.git /opt/de-trainer/repo
 install -m 600 /opt/de-trainer/repo/deploy/env.example /etc/de-trainer/env
 install -m 644 /opt/de-trainer/repo/deploy/systemd/de-trainer.service /etc/systemd/system/
 install -m 755 /opt/de-trainer/repo/deploy/de-trainer-admin /usr/local/bin/
@@ -36,6 +46,8 @@ systemctl daemon-reload && systemctl enable de-trainer
 **Значения для `/etc/de-trainer/env`:** `ACCESS_TEAM_DOMAIN` — `https://<team>.cloudflareaccess.com`; `ACCESS_AUD_USER` и `ACCESS_AUD_AGENT` — Application Audience (AUD) Tag приложений `de-class owner` и `de-class agent`.
 
 ## 3. Первый деплой и пользователи
+
+Деплоится `origin/main`; туда код попадает только через PR с зелёным CI.
 
 ```bash
 /opt/de-trainer/repo/scripts/deploy.sh origin/main
