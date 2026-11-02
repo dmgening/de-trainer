@@ -1,8 +1,7 @@
-import { Fragment, useRef } from 'react';
+import { Fragment } from 'react';
 import { PLACEHOLDER, type AnswerSpec, type PartOutcome } from '@de-trainer/core';
 
 type Spec = Extract<AnswerSpec, { type: 'gaps' }>;
-const GERMAN = ['ä', 'ö', 'ü', 'ß', 'Ä', 'Ö', 'Ü'];
 
 function split(template: string) {
   const parts: ({ text: string } | { gap: string })[] = [];
@@ -16,7 +15,7 @@ function split(template: string) {
   return parts;
 }
 
-/** Fill one or more gaps: typed (with German letters on screen) or chosen from chips; each gap is graded on its own. */
+/** Fill one or more gaps: typed or chosen from chips; each gap is graded on its own. */
 export function GapsAnswer(props: {
   spec: Spec;
   values: Record<string, string>;
@@ -27,24 +26,7 @@ export function GapsAnswer(props: {
   onSubmit(): void;
 }) {
   const { spec, values, outcomes, expected, done } = props;
-  const inputs = useRef(new Map<string, HTMLInputElement>());
-  const focused = useRef<string | null>(spec.gaps.find((g) => g.mode === 'input')?.id ?? null);
   const set = (id: string, v: string) => props.onChange({ ...values, [id]: v });
-  const hasInput = spec.gaps.some((g) => g.mode === 'input');
-
-  const insert = (ch: string) => {
-    const id = focused.current;
-    const el = id ? inputs.current.get(id) : undefined;
-    if (!id || !el) return;
-    const v = values[id] ?? '';
-    const start = el.selectionStart ?? v.length;
-    const end = el.selectionEnd ?? v.length;
-    set(id, v.slice(0, start) + ch + v.slice(end));
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(start + 1, start + 1);
-    });
-  };
 
   return (
     <div className="gaps">
@@ -59,9 +41,6 @@ export function GapsAnswer(props: {
             return (
               <span key={i} className="gap-slot">
                 <input
-                  ref={(el) => {
-                    if (el) inputs.current.set(gap.id, el);
-                  }}
                   className={`gap-input ${mark}`}
                   data-gap-id={gap.id}
                   aria-label={label}
@@ -74,7 +53,6 @@ export function GapsAnswer(props: {
                   autoComplete="off"
                   spellCheck={false}
                   enterKeyHint="done"
-                  onFocus={() => (focused.current = gap.id)}
                   onChange={(e) => set(gap.id, e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') props.onSubmit();
@@ -108,15 +86,6 @@ export function GapsAnswer(props: {
           );
         })}
       </p>
-      {hasInput && !done && (
-        <div className="german-keys" aria-label="Немецкие буквы">
-          {GERMAN.map((ch) => (
-            <button key={ch} type="button" className="key" onMouseDown={(e) => e.preventDefault()} onClick={() => insert(ch)}>
-              {ch}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
