@@ -1,0 +1,9 @@
+# Only for a connector running inside this LXC (locally managed tunnel).
+# With a dashboard-managed tunnel elsewhere, add the same public hostname there instead,
+# pointing at http://<lxc-ip>:8080 and setting HOST=0.0.0.0 plus a firewall rule for the connector host.
+tunnel: <TUNNEL_ID>
+credentials-file: /etc/cloudflared/<TUNNEL_ID>.json
+ingress:
+  - hostname: de-class.vta.dev
+    service: http://127.0.0.1:8080
+  - service: http_status:404

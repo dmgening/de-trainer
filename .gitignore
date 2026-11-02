@@ -1,0 +1,17 @@
+# Source exports from Nomir (workbook inventory, images); not part of the app
+_source_nomir/
+html-manifest.json
+
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+.data/
+*.sqlite
+*.sqlite-*
+.env
+.env.*
+!.env.example
+
+.DS_Store
