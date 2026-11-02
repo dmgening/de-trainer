@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-# Admin CLI against the prod database, as the service user. Example:
-#   de-trainer-admin user:add --email dima@example.com --name Дима --bank main
-set -euo pipefail
-set -a
-. /etc/de-trainer/env
-set +a
-exec runuser -u de-trainer -- node /opt/de-trainer/current/apps/server/dist/admin.js "$@"

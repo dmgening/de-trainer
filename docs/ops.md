@@ -1,56 +1,50 @@
 # Эксплуатация de-class
 
-Сервер — LXC-контейнер в хоумлабе, наружу через Cloudflare Tunnel, вход через Cloudflare Access. Адрес — `de-class.vta.dev`. Архитектура — [tech-spec.md](tech-spec.md).
+Сервер — NixOS-контейнер в хоумлабе, наружу через Cloudflare Tunnel и Caddy, вход через Cloudflare Access. Адрес — `de-class.vta.dev`. Архитектура — [tech-spec.md](tech-spec.md).
 
-## 1. Контейнер
+Хост, Access-приложения, сервисный токен Номира, маршрут туннеля и бэкапы описаны кодом в репозитории хоумлаба `dmgening/homelab`: ранбук `docs/runbooks/de-class.md`, Cloudflare — `tofu/cloudflare/de-class.tf`, хост — `nix/hosts/de-class.nix`. Здесь — то, что относится к самому приложению.
 
-Debian 12 или новее, непривилегированный LXC: 1 vCPU, 1 ГБ RAM, 10 ГБ диска. Нужны Node 22 LTS, `corepack enable` (pnpm возьмёт версию из `packageManager`), git, curl, а также `build-essential python3` на случай, если для `better-sqlite3` не скачается готовая сборка.
+## 1. Сборка и модуль
 
-Репозиторий `dmgening/de-trainer` приватный: контейнер читает его по deploy key. Ключ создаётся в контейнере, публичная часть добавляется в GitHub только на чтение:
+Этот репозиторий — flake:
 
-```bash
-ssh-keygen -t ed25519 -N '' -C de-trainer-lxc -f /root/.ssh/id_ed25519
-ssh-keyscan github.com >> /root/.ssh/known_hosts
-cat /root/.ssh/id_ed25519.pub
-# на маке: gh repo deploy-key add <файл с ключом> --repo dmgening/de-trainer --title homelab-lxc
-# или GitHub → Settings → Deploy keys → Add, без «Allow write access»
+- `packages.<system>.default` ([nix/package.nix](../nix/package.nix)) — серверный бандл, обе веб-сборки и runtime-зависимости сервера; `better-sqlite3` собирается из исходников. Команды: `de-trainer-server`, `de-trainer-migrate`, `de-trainer-admin`.
+- `nixosModules.default` ([nix/module.nix](../nix/module.nix)) — `services.de-trainer`: системный пользователь `de-trainer`, данные в `/var/lib/de-trainer`, миграции перед каждым запуском (`ExecStartPre`), обёртка `de-trainer-admin` для root.
+
+Хоумлаб подключает flake входом `de-trainer` и задаёт адрес, team domain и AUD-теги:
+
+```nix
+services.de-trainer = {
+  enable = true;
+  host = "0.0.0.0";
+  access = {
+    teamDomain = "https://vtanet.cloudflareaccess.com";
+    userAudiences = [ "<AUD de-class owner>" ];
+    agentAudiences = [ "<AUD de-class agent>" ];
+  };
+};
 ```
 
-```bash
-useradd --system --home /var/lib/de-trainer --shell /usr/sbin/nologin de-trainer
-mkdir -p /opt/de-trainer/releases /var/lib/de-trainer /etc/de-trainer
-chown de-trainer:de-trainer /var/lib/de-trainer && chmod 700 /var/lib/de-trainer
-git clone git@github.com:dmgening/de-trainer.git /opt/de-trainer/repo
-install -m 600 /opt/de-trainer/repo/deploy/env.example /etc/de-trainer/env
-install -m 644 /opt/de-trainer/repo/deploy/systemd/de-trainer.service /etc/systemd/system/
-install -m 755 /opt/de-trainer/repo/deploy/de-trainer-admin /usr/local/bin/
-systemctl daemon-reload && systemctl enable de-trainer
-```
+Секретов у сервера нет: AUD и team domain — публичные идентификаторы.
+
+**После каждого изменения `pnpm-lock.yaml`** обновить `pnpmDeps.hash` в `nix/package.nix`: поставить `""`, запустить `nix build`, вписать хеш из ошибки. CI-job `nix` собирает пакет, когда меняются зависимости или `nix/`.
 
 ## 2. Cloudflare
 
-**Туннель.** Public hostname `de-class.vta.dev` → `http://127.0.0.1:8080`, если коннектор `cloudflared` стоит в этом же контейнере ([пример конфига](../deploy/cloudflared/config.yml)). Если коннектор общий и живёт на другом хосте — `http://<ip-контейнера>:8080`, в env `HOST=0.0.0.0`, а firewall контейнера пускает на 8080 только хост коннектора.
-
-**Access.** Zero Trust → Access → Applications, тип Self-hosted:
-
 | Приложение | Адреса | Политика |
 |---|---|---|
-| de-class owner | `de-class.vta.dev/api`, `de-class.vta.dev/auth` | Allow, IdP Google, email Димы; длительность сессии 30 дней |
-| de-class agent | `de-class.vta.dev/agent` | Service Auth: сервисный токен `nomir` |
-| de-class public | `de-class.vta.dev` | Bypass, Everyone — нужно, только если существующее wildcard-приложение уже закрывает `*.vta.dev` |
+| de-class owner | `de-class.vta.dev/api`, `de-class.vta.dev/auth` | Allow, IdP Google, email учеников; сессия 30 дней |
+| de-class agent | `de-class.vta.dev/agent` | Service Auth: сервисный токен `nomir` (бессрочный) |
 
-Приложение с более специфичным путём побеждает, поэтому `/api`, `/auth` и `/agent` остаются закрытыми и при bypass на весь хост.
+Остальное (оболочка, `/demo`, `/healthz`) идёт без Access. Туннель дополнительно проверяет JWT на `/api`, `/auth` и `/agent`; сервер проверяет его ещё раз. `de-class.vta.dev` нет в split DNS хоумлаба: из домашней сети, в том числе Номир с Hermes, трафик тоже идёт через Access.
 
-**Сервисный токен.** Access → Service credentials → Service Tokens → `nomir`. Client ID и Secret отдаются Номиру (Hermes), Client ID нужен ещё для `agent:add` ниже.
+Client ID и Secret токена `nomir` лежат в секрете Hermes (`hermes_env`), Client ID нужен ещё для `agent:add` ниже.
 
-**Значения для `/etc/de-trainer/env`:** `ACCESS_TEAM_DOMAIN` — `https://<team>.cloudflareaccess.com`; `ACCESS_AUD_USER` и `ACCESS_AUD_AGENT` — Application Audience (AUD) Tag приложений `de-class owner` и `de-class agent`.
+## 3. Первый запуск и пользователи
 
-## 3. Первый деплой и пользователи
-
-Деплоится `origin/main`; туда код попадает только через PR с зелёным CI.
+Порядок первого деплоя — в ранбуке хоумлаба. После деплоя на хосте:
 
 ```bash
-/opt/de-trainer/repo/scripts/deploy.sh origin/main
 de-trainer-admin bank:add --id main --title "Max/Dima B1"
 de-trainer-admin user:add --email <gmail Димы> --name Дима --bank main --role owner
 de-trainer-admin agent:add --name nomir --client-id <Client ID токена>
@@ -58,11 +52,11 @@ de-trainer-admin agent:grant --name nomir --user <gmail Димы> --perm events:
 de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 ```
 
-`--role owner` даёт право откатывать банк из приложения; остальные участники банка — `learner`.
+`--role owner` даёт право откатывать банк из приложения; остальные участники банка — `learner`. Новый ученик: email в `de_class.emails` в хоумлабе (Access) и `user:add`.
 
-Дальше обновление — `deploy.sh <тег или origin/main>`, откат — `deploy.sh --rollback`. Скрипт собирает релиз в `/opt/de-trainer/releases/`, применяет миграции, переключает `current` и проверяет `/healthz`; хранит пять последних релизов.
+**Обновление** — новый коммит в `main` этого репо, затем в хоумлабе `nix flake update de-trainer --flake ./nix`, PR и деплой хоста `de-class`. **Откат** — деплой предыдущего коммита хоумлаба или `nixos-rebuild switch --rollback` на хосте. Миграции только добавляющие, поэтому старый код работает на новой схеме.
 
-Другие команды (`de-trainer-admin` без аргументов печатает список):
+Другие команды (`de-trainer-admin` без аргументов печатает список). Файлы для `--file` должны быть доступны пользователю `de-trainer`, например лежать в `/tmp`:
 
 | Команда | Зачем |
 |---|---|
@@ -71,6 +65,8 @@ de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 | `export --email <gmail> --file out.json` | Полная выгрузка ученика |
 | `restore --email <gmail> --file out.json` | Залить журнал из выгрузки (идемпотентно по `event_id`) |
 | `user:disable` / `agent:revoke` | Закрыть доступ без релиза |
+
+Логи: `journalctl -u de-trainer`.
 
 ## 4. Проверка после деплоя
 
@@ -82,10 +78,8 @@ de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 
 **iPhone (главный риск M0).** Safari → «Поделиться» → «На экран Домой». Открыть с иконки → «Войти через Google» → после входа приложение должно вернуться в себя и показать имя. Закрыть, открыть снова — вход сохраняется. Если вход уходит в Safari и не возвращается в приложение — записать, как именно, и не продолжать M1, пока не выберем обход.
 
-## 5. Litestream
+## 5. Резервные копии
 
-Установить пакет Litestream, положить [`deploy/litestream.yml`](../deploy/litestream.yml) в `/etc/litestream.yml`. Ключи и бакет — в `/etc/de-trainer/litestream.env` (права 600): `LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY`, `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT` (для R2 — `https://<account>.r2.cloudflarestorage.com`). Подключить env-файл через `systemctl edit litestream` (`EnvironmentFile=`), затем `systemctl enable --now litestream`.
+Сейчас — ежедневный снимок контейнера в Proxmox (vzdump; 7 дневных, 4 недельных, 3 месячных). В нём весь `/var/lib/de-trainer`: SQLite и картинки из `media/`. Снимок лежит дома, поэтому следующий шаг — копия вне дома: Litestream в R2 через `services.litestream` на хосте, ключи бакета в sops хоумлаба (ранбук хоумлаба, «Next: Litestream»). В nixpkgs Litestream 0.5, формат конфига отличается от 0.3.
 
-Учебное восстановление: `litestream restore -o /tmp/restore.sqlite /var/lib/de-trainer/app.sqlite` и `sqlite3 /tmp/restore.sqlite 'select count(*) from users'`.
-
-Litestream копирует только SQLite. Картинки лежат в `/var/lib/de-trainer/media/` по хешу; пока нет ежедневного `rclone`, после потери диска Номир загружает их заново (`PUT …/media/{sha256}` идемпотентен). Ежедневные выгрузки и `rclone` — следующим шагом.
+Litestream копирует только SQLite. Картинки лежат в `/var/lib/de-trainer/media/` по хешу; до ежедневного `rclone` после потери диска Номир загружает их заново (`PUT …/media/{sha256}` идемпотентен).

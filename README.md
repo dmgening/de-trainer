@@ -16,8 +16,7 @@ apps/server       Node + Hono: /api, /auth, /agent/v1, статика, SQLite
 packages/core     схемы, проверка ответа, вывод состояния, сборка тренировки, публикация
 packages/fixtures демо-пакет, тестовый пакет владельца и их картинки
 e2e               Playwright-сценарии приёмки
-deploy            systemd, cloudflared, Litestream, env
-scripts/deploy.sh деплой релиза в контейнере
+nix               Nix-пакет и NixOS-модуль (flake.nix); хост описан в хоумлабе
 ```
 
 ## Разработка
@@ -43,3 +42,5 @@ curl -H "Cf-Access-Jwt-Assertion: $TOKEN" http://127.0.0.1:8080/agent/v1/whoami
 ```
 
 Админ-команды: `pnpm admin` без аргументов печатает список.
+
+Прод-сборка через Nix: `nix build` (пакет — `nix/package.nix`). После изменения `pnpm-lock.yaml` нужно обновить в нём `pnpmDeps.hash`, см. [docs/ops.md](docs/ops.md).

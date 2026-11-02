@@ -1,0 +1,28 @@
+# The Nix package the homelab deploys. Runs when its inputs change, so a
+# lockfile change without a matching pnpmDeps.hash fails here, not in the homelab.
+name: nix
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - flake.nix
+      - flake.lock
+      - nix/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - '**/package.json'
+  pull_request:
+    paths: *paths
+
+concurrency:
+  group: nix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix build -L .#default
