@@ -20,6 +20,7 @@ export function OrderAnswer(props: { spec: Spec; seed: string; sequence: string[
           <button
             key={p.id}
             type="button"
+            data-tile-id={p.id}
             className="tile is-placed"
             disabled={done}
             aria-label={`${i + 1}: ${p.text}. Убрать`}
@@ -35,7 +36,7 @@ export function OrderAnswer(props: { spec: Spec; seed: string; sequence: string[
           {pool
             .filter((t) => !sequence.includes(t.id))
             .map((t) => (
-              <button key={t.id} type="button" className="tile" onClick={() => props.onChange([...sequence, t.id])}>
+              <button key={t.id} type="button" className="tile" data-tile-id={t.id} onClick={() => props.onChange([...sequence, t.id])}>
                 {t.text}
               </button>
             ))}

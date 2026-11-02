@@ -12,7 +12,8 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
-    "admin": "pnpm --filter @de-trainer/server admin"
+    "admin": "pnpm --filter @de-trainer/server admin",
+    "e2e": "pnpm build && pnpm --filter @de-trainer/e2e e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -5,6 +5,8 @@ html-manifest.json
 node_modules/
 dist/
 coverage/
+test-results/
+playwright-report/
 .data/
 *.sqlite
 *.sqlite-*

@@ -15,6 +15,7 @@ export function ChoiceAnswer(props: { spec: Spec; seed: string; selected: string
           <button
             key={o.id}
             type="button"
+            data-option-id={o.id}
             lang="de"
             className={`option ${state} ${o.id === selected ? 'is-selected' : ''}`}
             aria-pressed={o.id === selected}

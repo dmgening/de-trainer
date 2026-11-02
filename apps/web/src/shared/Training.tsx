@@ -121,7 +121,7 @@ function Question(props: {
   const revealAll = done && result.result !== 'correct';
 
   return (
-    <article className="question" aria-labelledby="prompt">
+    <article className="question" aria-labelledby="prompt" data-exercise-id={ex.exercise_id} data-revision={ex.revision}>
       <p className="progress">
         <span>
           {props.position.n} из {props.position.total}

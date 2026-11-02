@@ -63,6 +63,7 @@ export function GapsAnswer(props: {
                     if (el) inputs.current.set(gap.id, el);
                   }}
                   className={`gap-input ${mark}`}
+                  data-gap-id={gap.id}
                   aria-label={label}
                   value={values[gap.id] ?? ''}
                   size={Math.max(4, (values[gap.id] ?? '').length + 1, ...gap.accept.map((a) => Math.min(a.length + 1, 18)))}
@@ -84,7 +85,7 @@ export function GapsAnswer(props: {
             );
           }
           return (
-            <span key={i} className="gap-slot gap-chips" role="radiogroup" aria-label={label}>
+            <span key={i} className="gap-slot gap-chips" role="radiogroup" aria-label={label} data-gap-id={gap.id}>
               {gap.options.map((o) => {
                 const chosen = values[gap.id] === o.id;
                 const right = done && gap.correct.includes(o.id);
@@ -92,6 +93,7 @@ export function GapsAnswer(props: {
                   <button
                     key={o.id}
                     type="button"
+                    data-option-id={o.id}
                     role="radio"
                     aria-checked={chosen}
                     className={`chip ${chosen ? 'is-selected' : ''} ${chosen && done ? mark : ''} ${right ? 'is-correct' : ''}`}
