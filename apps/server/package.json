@@ -1,0 +1,32 @@
+{
+  "name": "@de-trainer/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/migrate.ts && tsx src/seed-dev.ts && tsx watch src/main.ts",
+    "build": "tsup",
+    "start": "node dist/main.js",
+    "migrate": "tsx src/migrate.ts",
+    "admin": "tsx src/admin.ts",
+    "db:generate": "drizzle-kit generate",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@de-trainer/core": "workspace:*",
+    "@hono/node-server": "^2.1.5",
+    "better-sqlite3": "^12.11.1",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.16",
+    "jose": "^6.2.14",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "drizzle-kit": "^0.31.11",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15"
+  }
+}

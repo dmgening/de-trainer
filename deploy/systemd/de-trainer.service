@@ -1,0 +1,22 @@
+[Unit]
+Description=de-class German trainer (Node + Hono)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=de-trainer
+Group=de-trainer
+WorkingDirectory=/opt/de-trainer/current
+EnvironmentFile=/etc/de-trainer/env
+ExecStart=/usr/bin/node apps/server/dist/main.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/de-trainer
+
+[Install]
+WantedBy=multi-user.target
