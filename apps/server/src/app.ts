@@ -1,17 +1,20 @@
 import { Hono } from 'hono';
-import { setCookie } from 'hono/cookie';
+import { deleteCookie, setCookie } from 'hono/cookie';
 import { secureHeaders } from 'hono/secure-headers';
-import { ROUTES, SCHEMA_VERSION, type AgentWhoamiResponse, type MeResponse } from '@de-trainer/core';
+import { ROUTES } from '@de-trainer/core';
 import type { AccessVerifier } from './auth/access';
 import type { DevAuth } from './auth/dev-auth';
-import { ACCESS_COOKIE, agentAuth, userAuth } from './auth/middleware';
+import { ACCESS_COOKIE } from './auth/middleware';
+import { createContentService, type ContentService } from './content/service';
 import { DEV_USER_AUDIENCE, DEV_USER_EMAIL, type Config } from './config';
 import type { Db } from './db/client';
-import { listUserBanks } from './db/repo';
 import { apiError } from './errors';
+import { createLearnerService } from './learner/service';
 import type { Logger } from './logger';
+import { agentRoutes } from './routes/agent';
+import { ownerRoutes } from './routes/owner';
 import { serveDir } from './static';
-import type { AgentEnv, AppEnv, UserEnv } from './types';
+import type { AppEnv } from './types';
 
 export type AppDeps = {
   config: Config;
@@ -20,6 +23,7 @@ export type AppDeps = {
   logger: Logger;
   /** Present outside prod only: enables /auth/dev-login and the cookie fallback. */
   devAuth?: DevAuth;
+  content?: ContentService;
 };
 
 const RESERVED = [ROUTES.api, ROUTES.auth, '/agent'];
@@ -52,7 +56,8 @@ export function createApp(deps: AppDeps) {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:'],
+        // blob: — offline media are read from Cache Storage and shown through object URLs.
+        imgSrc: ["'self'", 'data:', 'blob:'],
         connectSrc: ["'self'"],
         manifestSrc: ["'self'"],
         workerSrc: ["'self'"],
@@ -75,39 +80,29 @@ export function createApp(deps: AppDeps) {
       setCookie(c, ACCESS_COOKIE, token, { httpOnly: true, sameSite: 'Lax', path: '/' });
       return c.redirect('/');
     });
+    app.get(`${ROUTES.auth}/dev-logout`, (c) => {
+      deleteCookie(c, ACCESS_COOKIE, { path: '/' });
+      return c.redirect(ROUTES.demo);
+    });
   }
 
   const allowCookie = devAuth !== undefined;
+  const content = deps.content ?? createContentService(db, config.dataDir);
+  const learner = createLearnerService(db);
 
-  const api = new Hono<UserEnv>();
-  api.use('*', userAuth({ db, verify, audiences: config.access.userAudiences, allowCookie }));
-  api.get('/me', (c) => {
-    const user = c.get('user');
-    const body: MeResponse = {
-      user_id: user.userId,
-      email: user.email,
-      display_name: user.displayName,
-      banks: listUserBanks(db, user.userId).map((b) => ({ bank_id: b.bankId, title: b.title, role: b.role })),
-      schema_version: SCHEMA_VERSION,
-    };
-    return c.json(body);
-  });
-  api.all('*', (c) => apiError(c, 404, 'not_found', 'Unknown API route'));
-  app.route(ROUTES.api, api);
-
-  const agent = new Hono<AgentEnv>();
-  agent.use('*', agentAuth({ db, verify, audiences: config.access.agentAudiences, allowCookie: false }));
-  agent.get('/whoami', (c) => {
-    const a = c.get('agent');
-    const body: AgentWhoamiResponse = {
-      agent_id: a.agentId,
-      name: a.name,
-      grants: a.grants.map((g) => ({ scope_type: g.scopeType, scope_id: g.scopeId, permission: g.permission })),
-    };
-    return c.json(body);
-  });
-  agent.all('*', (c) => apiError(c, 404, 'not_found', 'Unknown agent API route'));
-  app.route(ROUTES.agent, agent);
+  app.route(
+    ROUTES.api,
+    ownerRoutes({
+      db,
+      verify,
+      audiences: config.access.userAudiences,
+      allowCookie,
+      content,
+      learner,
+      logoutUrl: devAuth ? `${ROUTES.auth}/dev-logout` : '/cdn-cgi/access/logout',
+    }),
+  );
+  app.route(ROUTES.agent, agentRoutes({ db, verify, audiences: config.access.agentAudiences, content, learner }));
 
   // Demo and owner builds share the origin; the server keeps their files and fallbacks apart.
   app.get('/demo', (c) => c.redirect(ROUTES.demo));

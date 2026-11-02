@@ -18,9 +18,18 @@ for (const f of ['owner/index.html', 'owner/manifest.webmanifest', 'owner/sw.js'
 for (const f of ['demo/sw.js', 'demo/manifest.webmanifest']) {
   if (existsSync(path.join(dist, f))) fail(`demo must not ship ${f}`);
 }
+// The public demo: no API or sync code, no owner test content, no workbook locators (A09).
 for (const f of filesIn(path.join(dist, 'demo')).filter((f) => f.endsWith('.js'))) {
   const src = readFileSync(f, 'utf8');
-  for (const needle of ['/api/', '/auth/login']) {
+  for (const needle of ['/api/', '/auth/login', '/sync/', 'owner-test', 'workbook-test-doc', 'source_refs:[{']) {
+    if (src.includes(needle)) fail(`${path.relative(dist, f)} contains ${needle}`);
+  }
+}
+if (!filesIn(path.join(dist, 'demo/media')).some((f) => f.endsWith('.png'))) fail('demo media are missing');
+// The owner shell is public too: it must not embed any bank content.
+for (const f of filesIn(path.join(dist, 'owner')).filter((f) => f.endsWith('.js'))) {
+  const src = readFileSync(f, 'utf8');
+  for (const needle of ['owner-test', 'demo-core', 'workbook-test-doc']) {
     if (src.includes(needle)) fail(`${path.relative(dist, f)} contains ${needle}`);
   }
 }

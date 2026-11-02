@@ -66,8 +66,8 @@ export function listUsers(db: Db) {
   return db.select().from(users).all();
 }
 
-export function addBankMember(db: Db, bankId: string, userId: string) {
-  db.insert(bankMembers).values({ bankId, userId }).onConflictDoNothing().run();
+export function addBankMember(db: Db, bankId: string, userId: string, role: 'owner' | 'learner' = 'learner') {
+  db.insert(bankMembers).values({ bankId, userId, role }).onConflictDoUpdate({ target: [bankMembers.bankId, bankMembers.userId], set: { role } }).run();
 }
 
 export function addAgent(db: Db, input: { name: string; accessClientId: string }) {

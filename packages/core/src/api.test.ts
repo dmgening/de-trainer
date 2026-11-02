@@ -9,6 +9,9 @@ describe('MeResponse', () => {
       display_name: 'Дима',
       banks: [{ bank_id: 'main', title: 'Max/Dima B1', role: 'learner' }],
       schema_version: 1,
+      scheduler_version: 1,
+      checker_version: 1,
+      logout_url: '/cdn-cgi/access/logout',
     });
     expect(me.banks).toHaveLength(1);
   });

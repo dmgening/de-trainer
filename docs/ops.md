@@ -40,19 +40,31 @@ systemctl daemon-reload && systemctl enable de-trainer
 ```bash
 /opt/de-trainer/repo/scripts/deploy.sh origin/main
 de-trainer-admin bank:add --id main --title "Max/Dima B1"
-de-trainer-admin user:add --email <gmail Димы> --name Дима --bank main
+de-trainer-admin user:add --email <gmail Димы> --name Дима --bank main --role owner
 de-trainer-admin agent:add --name nomir --client-id <Client ID токена>
 de-trainer-admin agent:grant --name nomir --user <gmail Димы> --perm events:read,events:write,recommendations:write,scheduler:write
 de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 ```
 
+`--role owner` даёт право откатывать банк из приложения; остальные участники банка — `learner`.
+
 Дальше обновление — `deploy.sh <тег или origin/main>`, откат — `deploy.sh --rollback`. Скрипт собирает релиз в `/opt/de-trainer/releases/`, применяет миграции, переключает `current` и проверяет `/healthz`; хранит пять последних релизов.
+
+Другие команды (`de-trainer-admin` без аргументов печатает список):
+
+| Команда | Зачем |
+|---|---|
+| `media:put --bank main --file img.webp` | Загрузить картинку вручную |
+| `package:publish --bank main --file pkg.json` | Ручной импорт пакета с теми же проверками, что в API (F17) |
+| `export --email <gmail> --file out.json` | Полная выгрузка ученика |
+| `restore --email <gmail> --file out.json` | Залить журнал из выгрузки (идемпотентно по `event_id`) |
+| `user:disable` / `agent:revoke` | Закрыть доступ без релиза |
 
 ## 4. Проверка после деплоя
 
 1. `curl https://de-class.vta.dev/healthz` → `ok`.
 2. Браузер: `https://de-class.vta.dev` → «Войти через Google» → после входа видно имя и один банк.
-3. Номир: `curl -H "CF-Access-Client-Id: <id>" -H "CF-Access-Client-Secret: <secret>" https://de-class.vta.dev/agent/v1/whoami` → агент `nomir` и его права.
+3. Номир: `curl -H "CF-Access-Client-Id: <id>" -H "CF-Access-Client-Secret: <secret>" https://de-class.vta.dev/agent/v1/whoami` → агент `nomir` и его права. Дальше Номир работает по [agent-api.md](agent-api.md): загружает картинки, проверяет и публикует первый пакет.
 4. Без токена `https://de-class.vta.dev/api/me` и `/agent/v1/whoami` не открываются.
 5. `https://de-class.vta.dev/demo/` открывается без входа.
 
@@ -64,4 +76,4 @@ de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 
 Учебное восстановление: `litestream restore -o /tmp/restore.sqlite /var/lib/de-trainer/app.sqlite` и `sqlite3 /tmp/restore.sqlite 'select count(*) from users'`.
 
-Ежедневные выгрузки и копия файлов через `rclone` появятся вместе с данными в M3.
+Litestream копирует только SQLite. Картинки лежат в `/var/lib/de-trainer/media/` по хешу; пока нет ежедневного `rclone`, после потери диска Номир загружает их заново (`PUT …/media/{sha256}` идемпотентен). Ежедневные выгрузки и `rclone` — следующим шагом.

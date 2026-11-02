@@ -9,6 +9,14 @@ export default defineConfig(
   js.configs.recommended,
   tseslint.configs.recommended,
   {
+    rules: { '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true, argsIgnorePattern: '^_' }] },
+  },
+  {
+    // Integration tests poke into JSON responses; typing every body would add noise, not safety.
+    files: ['**/test/**', '**/*.test.ts'],
+    rules: { '@typescript-eslint/no-explicit-any': 'off' },
+  },
+  {
     files: ['apps/server/**', 'packages/**', 'scripts/**', '**/*.config.{js,ts}', '**/*.mjs'],
     languageOptions: { globals: globals.node },
   },
