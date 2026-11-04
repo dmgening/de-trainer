@@ -4,6 +4,8 @@
 
 Хост, Access-приложения, сервисный токен Номира, маршрут туннеля и бэкапы описаны кодом в репозитории хоумлаба `dmgening/homelab`: ранбук `docs/runbooks/de-class.md`, Cloudflare — `tofu/cloudflare/de-class.tf`, хост — `nix/hosts/de-class.nix`. Здесь — то, что относится к самому приложению.
 
+Второй способ запуска — образ под Podman за Traefik на apps-хосте хоумлаба, см. [раздел 6](#6-контейнер-podman-и-traefik). Cloudflare, пользователи и проверка после деплоя (разделы 2-4) от способа не зависят.
+
 ## 1. Сборка и модуль
 
 Этот репозиторий — flake:
@@ -83,3 +85,48 @@ de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 Сейчас — ежедневный снимок контейнера в Proxmox (vzdump; 7 дневных, 4 недельных, 3 месячных). В нём весь `/var/lib/de-trainer`: SQLite и картинки из `media/`. Снимок лежит дома, поэтому следующий шаг — копия вне дома: Litestream в R2 через `services.litestream` на хосте, ключи бакета в sops хоумлаба (ранбук хоумлаба, «Next: Litestream»). В nixpkgs Litestream 0.5, формат конфига отличается от 0.3.
 
 Litestream копирует только SQLite. Картинки лежат в `/var/lib/de-trainer/media/` по хешу; до ежедневного `rclone` после потери диска Номир загружает их заново (`PUT …/media/{sha256}` идемпотентен).
+
+## 6. Контейнер: Podman и Traefik
+
+Образ — [Dockerfile](../Dockerfile), та же раскладка и те же команды, что у Nix-пакета: `de-trainer-server`, `de-trainer-migrate`, `de-trainer-admin`. При каждом старте контейнер сначала применяет миграции, затем запускает сервер. Процесс работает от `node` (uid 1000), данные — в `/data`. Без `ACCESS_*` контейнер в `prod` не стартует.
+
+Workflow [image](../.github/workflows/image.yml) публикует образ из `main` в `ghcr.io/dmgening/de-trainer` с тегами `main` и `sha-<коммит>`; в PR, которые меняют Dockerfile или зависимости, он только собирается. Репозиторий приватный, поэтому пакет тоже приватный: на хосте нужен `docker login ghcr.io` с classic PAT со scope `read:packages` (fine-grained токены GHCR не принимает).
+
+Стек — [compose.yaml](../compose.yaml): сервис `app` во внешней сети `ingress`, Traefik ведёт на него `Host(de-class.vta.dev)` с entrypoint `web` на порт 8080. Корень ФС только для чтения, писать можно в том `data` и tmpfs `/tmp`. Настройки — `.env` рядом со стеком по образцу [.env.example](../.env.example). В хоумлабе стек лежит в `compose/de-class/` как копия этих двух файлов с заполненным `.env`; деплоить закреплённый тег `sha-…`, не `main`.
+
+Команды ниже — из каталога стека на хосте (`docker` там — это podman, `docker-compose` ходит в его сокет).
+
+```bash
+docker compose pull && docker compose up -d     # первый запуск и обновление
+docker compose ps                               # healthy через ~20 с
+docker compose logs -f app
+docker compose exec app de-trainer-admin user:add --email <gmail> --name Дима --bank main --role owner
+```
+
+Файлы для `--file` сначала положить в контейнер: `docker cp` не пишет в tmpfs, поэтому через stdin.
+
+```bash
+docker compose exec -T app sh -c 'cat > /tmp/pkg.json' < pkg.json
+docker compose exec app de-trainer-admin package:publish --bank main --file /tmp/pkg.json
+docker compose exec -T app de-trainer-admin export --email <gmail> > out.json
+```
+
+**Обновление** — новый коммит в `main`, дождаться workflow `image`, вписать новый тег в `DE_CLASS_IMAGE` и выполнить `docker compose pull && docker compose up -d`. **Откат** — предыдущий тег, те же команды; миграции только добавляющие.
+
+**Данные** — том `de-class_data` (SQLite и `media/`), путь на хосте: `docker volume inspect de-class_data --format '{{.Mountpoint}}'`. В бэкап apps-хоста он должен входить целиком, как `/var/lib/de-trainer` сейчас.
+
+**Переезд с NixOS-хоста.** Остановить сервис, перенести каталог данных в том, отдать его uid 1000, поднять стек, затем переключить upstream `de-class.vta.dev` в Caddy на Traefik apps-хоста (хоумлаб).
+
+```bash
+# на de-class
+systemctl stop de-trainer
+tar -C /var/lib/de-trainer -czf /tmp/de-class.tgz .
+
+# на apps-хосте, в каталоге стека, после копирования архива в /tmp
+docker compose create
+docker run --rm -v de-class_data:/data -v /tmp/de-class.tgz:/in.tgz:ro docker.io/library/alpine:3.21 \
+  sh -c 'tar -C /data -xzf /in.tgz && chown -R 1000:1000 /data'
+docker compose up -d
+```
+
+После переключения пройти проверку из раздела 4.

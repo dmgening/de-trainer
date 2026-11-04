@@ -44,3 +44,5 @@ curl -H "Cf-Access-Jwt-Assertion: $TOKEN" http://127.0.0.1:8080/agent/v1/whoami
 Админ-команды: `pnpm admin` без аргументов печатает список.
 
 Прод-сборка через Nix: `nix build` (пакет — `nix/package.nix`). После изменения `pnpm-lock.yaml` нужно обновить в нём `pnpmDeps.hash`, см. [docs/ops.md](docs/ops.md).
+
+Контейнер: `docker build -t de-trainer .` (или `podman build`), стек для Podman за Traefik — `compose.yaml`, см. [docs/ops.md](docs/ops.md#6-контейнер-podman-и-traefik).

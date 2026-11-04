@@ -1,0 +1,51 @@
+# de-class on the homelab apps host: Podman's Docker-compatible socket driven
+# by docker-compose, Traefik (homelab compose/traefik) routing by Host on the
+# external `ingress` network; Caddy and Cloudflare Access sit in front of it.
+#
+# Settings come from a .env next to this file (see .env.example). None are
+# secret: AUD tags and the team domain are public identifiers. Deploy a pinned
+# sha-<commit> tag, so a rollback is a one-line change.
+name: de-class
+services:
+  app:
+    image: ${DE_CLASS_IMAGE:-ghcr.io/dmgening/de-trainer:main}
+    environment:
+      ACCESS_TEAM_DOMAIN: ${ACCESS_TEAM_DOMAIN:?https://<team>.cloudflareaccess.com}
+      ACCESS_AUD_USER: ${ACCESS_AUD_USER:?AUD tags of the de-class owner Access app}
+      ACCESS_AUD_AGENT: ${ACCESS_AUD_AGENT:?AUD tags of the de-class agent Access app}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    # SQLite and media/ (images by hash): the only state, back up this volume.
+    volumes:
+      - data:/data
+    networks: [ingress]
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.de-class.rule: Host(`${DE_CLASS_HOST:-de-class.vta.dev}`)
+      traefik.http.routers.de-class.entrypoints: web
+      traefik.http.services.de-class.loadbalancer.server.port: "8080"
+    # The server writes only to /data; the rest of the filesystem stays read-only.
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    # The slim Node image has no wget or curl.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/healthz').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+volumes:
+  data: {}
+
+networks:
+  # Created by the host (homelab nix/hosts/apps.nix); Traefik watches it.
+  ingress:
+    external: true
