@@ -1,0 +1,17 @@
+# Only what the build reads (the same set as nix/package.nix), so docs, e2e and
+# the 160 MB Nomir export never reach the build context.
+# e2e/package.json stays: the lockfile lists it as a workspace project.
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig.base.json
+!apps
+!packages
+!e2e/package.json
+
+**/node_modules
+**/dist
+**/.data
+**/*.sqlite*
+**/.DS_Store
