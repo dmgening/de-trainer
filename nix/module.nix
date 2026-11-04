@@ -68,15 +68,19 @@ in
       };
       agentAudiences = lib.mkOption {
         type = lib.types.listOf lib.types.str;
-        description = "AUD tags of the Access application on /agent (de-class agent).";
+        default = [ ];
+        description = ''
+          AUD tags of the Access application on /agent (de-class agent). Empty:
+          /agent accepts only API tokens issued with `de-trainer-admin agent:token`.
+        '';
       };
     };
   };
 
   config = lib.mkIf cfg.enable {
     assertions = [{
-      assertion = cfg.access.userAudiences != [ ] && cfg.access.agentAudiences != [ ];
-      message = "services.de-trainer.access: set the AUD tags of both Access applications.";
+      assertion = cfg.access.userAudiences != [ ];
+      message = "services.de-trainer.access.userAudiences: set the AUD tags of the de-class owner Access application.";
     }];
 
     users.users.de-trainer = {

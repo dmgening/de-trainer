@@ -22,7 +22,7 @@ services.de-trainer = {
   access = {
     teamDomain = "https://vtanet.cloudflareaccess.com";
     userAudiences = [ "<AUD de-class owner>" ];
-    agentAudiences = [ "<AUD de-class agent>" ];
+    agentAudiences = [ "<AUD de-class agent>" ];  # можно не задавать, см. раздел 7
   };
 };
 ```
@@ -42,6 +42,8 @@ services.de-trainer = {
 
 Client ID и Secret токена `nomir` лежат в секрете Hermes (`hermes_env`), Client ID нужен ещё для `agent:add` ниже.
 
+Вход Номира мимо Cloudflare — токен API, [раздел 7](#7-токен-api-номира). Когда Номир ходит только с ним, приложение `de-class agent` можно убрать.
+
 ## 3. Первый запуск и пользователи
 
 Порядок первого деплоя — в ранбуке хоумлаба. После деплоя на хосте:
@@ -52,6 +54,7 @@ de-trainer-admin user:add --email <gmail Димы> --name Дима --bank main -
 de-trainer-admin agent:add --name nomir --client-id <Client ID токена>
 de-trainer-admin agent:grant --name nomir --user <gmail Димы> --perm events:read,events:write,recommendations:write,scheduler:write
 de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
+de-trainer-admin agent:token --name nomir    # токен API для входа мимо Cloudflare, раздел 7
 ```
 
 `--role owner` даёт право откатывать банк из приложения; остальные участники банка — `learner`. Новый ученик: email в `de_class.emails` в хоумлабе (Access) и `user:add`.
@@ -66,6 +69,7 @@ de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 | `package:publish --bank main --file pkg.json` | Ручной импорт пакета с теми же проверками, что в API (F17) |
 | `export --email <gmail> --file out.json` | Полная выгрузка ученика |
 | `restore --email <gmail> --file out.json` | Залить журнал из выгрузки (идемпотентно по `event_id`) |
+| `agent:token` / `agent:token:revoke` | Выпустить (заменить) / убрать токен API агента |
 | `user:disable` / `agent:revoke` | Закрыть доступ без релиза |
 
 Логи: `journalctl -u de-trainer`.
@@ -74,7 +78,7 @@ de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 
 1. `curl https://de-class.vta.dev/healthz` → `ok`.
 2. Браузер: `https://de-class.vta.dev` → «Войти через Google» → после входа видно имя и один банк.
-3. Номир: `curl -H "CF-Access-Client-Id: <id>" -H "CF-Access-Client-Secret: <secret>" https://de-class.vta.dev/agent/v1/whoami` → агент `nomir` и его права. Дальше Номир работает по [agent-api.md](agent-api.md): загружает картинки, проверяет и публикует первый пакет.
+3. Номир: `curl -H "CF-Access-Client-Id: <id>" -H "CF-Access-Client-Secret: <secret>" https://de-class.vta.dev/agent/v1/whoami` → агент `nomir` и его права. С токеном API — `curl -H "Authorization: Bearer <токен>" <внутренний адрес>/agent/v1/whoami` с Hermes, тот же ответ. Дальше Номир работает по [agent-api.md](agent-api.md): загружает картинки, проверяет и публикует первый пакет.
 4. Без токена `https://de-class.vta.dev/api/me` и `/agent/v1/whoami` не открываются.
 5. `https://de-class.vta.dev/demo/` открывается без входа.
 
@@ -130,3 +134,26 @@ docker compose up -d
 ```
 
 После переключения пройти проверку из раздела 4.
+
+## 7. Токен API Номира
+
+Второй способ входа на `/agent`: Номир шлёт `Authorization: Bearer dct_…` по внутреннему маршруту хоумлаба, без Cloudflare и интернета. Права те же `agent_grants`. Сервер хранит только SHA-256 токена (`agents.api_token_hash`).
+
+**Выпуск.** На хосте (в контейнере — через `docker compose exec app`):
+
+```bash
+de-trainer-admin agent:token --name nomir
+```
+
+Команда печатает токен один раз, повторно его не получить. Положить в секрет Hermes (`hermes_env`), например как `DE_CLASS_API_TOKEN`. Новый выпуск сразу отменяет предыдущий токен: это и есть ротация, после неё обновить секрет. `agent:token:revoke --name nomir` убирает токен, сервисный токен Access продолжает работать. `agent:revoke` закрывает оба способа.
+
+**Маршрут в хоумлабе.** Требования к нему, конфиг — в репозитории хоумлаба:
+
+- имя только во внутреннем DNS (CoreDNS), без публичной записи и без маршрута в туннеле;
+- TLS на Caddy, как у остальных хостов;
+- на сервер идёт только `/agent/*`, остальное — 404: оболочка и `/api` остаются за Access на `de-class.vta.dev`;
+- Host к бэкенду — тот, что он ждёт: Traefik на apps-хосте выбирает стек по `Host(de-class.vta.dev)`.
+
+Сервер отвечает 403 на токен API в запросе с заголовком `CF-Ray`, то есть пришедшем через Cloudflare. Поэтому даже маршрут через туннель не откроет вход по токену из интернета, если `CF-Ray` доходит до сервера через cloudflared, Caddy и Traefik. Это пока не проверено на проде: без Access-приложения агента `curl -H "Authorization: Bearer <токен>" https://de-class.vta.dev/agent/v1/whoami` должен вернуть 403 `API tokens are not accepted through Cloudflare`.
+
+**Без Access для Номира.** Когда Номир работает только с токеном API, можно убрать `ACCESS_AUD_AGENT` (в модуле — `access.agentAudiences`). Тогда `/agent` принимает только токен API. В хоумлабе после этого убрать приложение `de-class agent`, сервисный токен `nomir`, правило BIC для `/agent` и правило туннеля для `/agent`. Без правила `/agent` из интернета попадает в общий маршрут без Access; его закрывает проверка `CF-Ray` выше, но надёжнее отдавать 404 на `/agent` в публичном vhost Caddy.

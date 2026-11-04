@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { ExportFile, Permission, type StoredEvent } from '@de-trainer/core';
+import { newAgentToken } from './auth/agent-token';
 import { loadDevAuth } from './auth/dev-auth';
 import { DEV_AGENT_AUDIENCE, DEV_USER_AUDIENCE, loadConfig } from './config';
 import { ContentError, createContentService, sha256 } from './content/service';
@@ -14,6 +15,7 @@ import {
   grantAgent,
   listUsers,
   setAgentStatus,
+  setAgentTokenHash,
   setUserStatus,
   upsertBank,
 } from './db/repo';
@@ -30,6 +32,8 @@ const USAGE = `Usage: admin <command> [options]
   agent:add    --name <name> --client-id <Access service token Client ID>
   agent:grant  --name <name> (--user <email> | --bank <bank_id>) --perm <p1,p2,...>
   agent:revoke --name <name>
+  agent:token  --name <name>                            issue an API token (replaces the old one), printed once
+  agent:token:revoke --name <name>                      remove the API token; the service token keeps working
   media:put    --bank <bank_id> --file <image>          upload an image for packages
   package:publish --bank <bank_id> --file <package.json>  manual import, same checks as the API
   export       --email <email> [--file <out.json>]      full learner export
@@ -120,6 +124,16 @@ try {
     }
     case 'agent:revoke':
       console.log(setAgentStatus(db, need('name'), 'revoked') ? 'revoked' : 'no such agent');
+      break;
+    case 'agent:token': {
+      const { token, hash } = newAgentToken();
+      if (!setAgentTokenHash(db, need('name'), hash)) fail('no such agent');
+      // The only copy: the server keeps the hash.
+      console.log(token);
+      break;
+    }
+    case 'agent:token:revoke':
+      console.log(setAgentTokenHash(db, need('name'), null) ? 'token removed' : 'no such agent');
       break;
     case 'media:put': {
       const buf = readFileSync(need('file'));

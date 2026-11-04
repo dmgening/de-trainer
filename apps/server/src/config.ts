@@ -56,14 +56,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     if (!team || !/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(team)) {
       throw new Error('ACCESS_TEAM_DOMAIN must be https://<team>.cloudflareaccess.com in prod');
     }
-    if (!e.ACCESS_AUD_USER?.length || !e.ACCESS_AUD_AGENT?.length) {
-      throw new Error('ACCESS_AUD_USER and ACCESS_AUD_AGENT are required in prod');
-    }
+    if (!e.ACCESS_AUD_USER?.length) throw new Error('ACCESS_AUD_USER is required in prod');
     access = {
       mode: 'cloudflare',
       teamDomain: team,
       userAudiences: e.ACCESS_AUD_USER,
-      agentAudiences: e.ACCESS_AUD_AGENT,
+      // Without it /agent takes only API tokens: Nomir no longer needs the Access application.
+      agentAudiences: e.ACCESS_AUD_AGENT ?? [],
     };
   } else {
     access = {

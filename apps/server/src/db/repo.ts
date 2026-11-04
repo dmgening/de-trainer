@@ -32,6 +32,14 @@ export function findActiveAgentByClientId(db: Db, clientId: string) {
     .get();
 }
 
+export function findActiveAgentByTokenHash(db: Db, tokenHash: string) {
+  return db
+    .select()
+    .from(agents)
+    .where(and(eq(agents.apiTokenHash, tokenHash), eq(agents.status, 'active')))
+    .get();
+}
+
 export function listAgentGrants(db: Db, agentId: string) {
   return db
     .select({ scopeType: agentGrants.scopeType, scopeId: agentGrants.scopeId, permission: agentGrants.permission })
@@ -80,6 +88,15 @@ export function addAgent(db: Db, input: { name: string; accessClientId: string }
 
 export function findAgentByName(db: Db, name: string) {
   return db.select().from(agents).where(eq(agents.name, name)).get();
+}
+
+/** One token per agent: setting a new hash invalidates the old token, null removes it. */
+export function setAgentTokenHash(db: Db, name: string, tokenHash: string | null) {
+  return db
+    .update(agents)
+    .set({ apiTokenHash: tokenHash, apiTokenCreatedAt: tokenHash ? now() : null })
+    .where(eq(agents.name, name))
+    .run().changes;
 }
 
 export function setAgentStatus(db: Db, name: string, status: 'active' | 'revoked') {

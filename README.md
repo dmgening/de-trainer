@@ -37,9 +37,11 @@ pnpm dev
 API Номира локально:
 
 ```bash
-TOKEN=$(pnpm -s admin dev:token --client-id dev-agent.access)
-curl -H "Cf-Access-Jwt-Assertion: $TOKEN" http://127.0.0.1:8080/agent/v1/whoami
+TOKEN=$(pnpm -s admin agent:token --name nomir-dev)
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/agent/v1/whoami
 ```
+
+Так же, как за Access: `TOKEN=$(pnpm -s admin dev:token --client-id dev-agent.access)` и заголовок `Cf-Access-Jwt-Assertion: $TOKEN`.
 
 Админ-команды: `pnpm admin` без аргументов печатает список.
 

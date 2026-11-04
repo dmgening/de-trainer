@@ -12,7 +12,8 @@ services:
     environment:
       ACCESS_TEAM_DOMAIN: ${ACCESS_TEAM_DOMAIN:?https://<team>.cloudflareaccess.com}
       ACCESS_AUD_USER: ${ACCESS_AUD_USER:?AUD tags of the de-class owner Access app}
-      ACCESS_AUD_AGENT: ${ACCESS_AUD_AGENT:?AUD tags of the de-class agent Access app}
+      # Empty: Nomir uses only its API token (de-trainer-admin agent:token).
+      ACCESS_AUD_AGENT: ${ACCESS_AUD_AGENT:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     # SQLite and media/ (images by hash): the only state, back up this volume.
     volumes:

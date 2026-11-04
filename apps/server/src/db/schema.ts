@@ -35,6 +35,9 @@ export const agents = sqliteTable('agents', {
   name: text('name').notNull().unique(),
   status: text('status', { enum: ['active', 'revoked'] }).notNull().default('active'),
   createdAt: text('created_at').notNull(),
+  /** SHA-256 of the agent's API token, the way in without Cloudflare; NULL when none is issued. */
+  apiTokenHash: text('api_token_hash').unique(),
+  apiTokenCreatedAt: text('api_token_created_at'),
 });
 
 export const agentGrants = sqliteTable(
