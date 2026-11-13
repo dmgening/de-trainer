@@ -13,7 +13,7 @@ test('A09: personal and agent APIs refuse requests without the right token', asy
   await login(page, USERS.training);
   expect((await page.request.get('/agent/v1/whoami')).status()).toBe(401);
 
-  // Nomir cannot write learner events or change the log.
+  // Lumi cannot write learner events or change the log.
   const users = await (await agent(request).get('/users')).json();
   const userId = users.users[0].user_id as string;
   const attempt = await agent(request).post(`/users/${userId}/events`, { events: [{ type: 'attempt', payload: {} }] });

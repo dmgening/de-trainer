@@ -31,7 +31,7 @@ export type LearnerState = {
   scheduler_version: number;
   bank_id: string;
   units: Record<string, UnitState>;
-  /** Exercises flagged as disputed and not yet resolved by Nomir: hidden from sessions. */
+  /** Exercises flagged as disputed and not yet resolved by Lumi: hidden from sessions. */
   flagged: Record<string, { flag_id: string; revision: number; at: string }>;
   exercise_last_seen: Record<string, string>;
   family_last_seen: Record<string, string>;

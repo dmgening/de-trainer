@@ -1,5 +1,5 @@
 # Only what the build reads (the same set as nix/package.nix), so docs, e2e and
-# the 160 MB Nomir export never reach the build context.
+# the 160 MB Lumi export never reach the build context.
 # e2e/package.json stays: the lockfile lists it as a workspace project.
 **
 !package.json

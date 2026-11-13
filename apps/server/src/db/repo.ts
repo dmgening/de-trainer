@@ -86,6 +86,17 @@ export function setAgentStatus(db: Db, name: string, status: 'active' | 'revoked
   return db.update(agents).set({ status }).where(eq(agents.name, name)).run().changes;
 }
 
+/**
+ * Renames an agent in place: same agent_id, service token and grants (a second agent with the same
+ * Client ID cannot be added). New events carry actor `agent:<to>`; stored events keep the old name.
+ */
+export function renameAgent(db: Db, name: string, to: string): 'renamed' | 'missing' | 'taken' {
+  if (!findAgentByName(db, name)) return 'missing';
+  if (name !== to && findAgentByName(db, to)) return 'taken';
+  db.update(agents).set({ name: to }).where(eq(agents.name, name)).run();
+  return 'renamed';
+}
+
 export function grantAgent(db: Db, agentId: string, scopeType: GrantScope, scopeId: string, permissions: Permission[]) {
   for (const permission of permissions) {
     db.insert(agentGrants).values({ agentId, scopeType, scopeId, permission }).onConflictDoNothing().run();

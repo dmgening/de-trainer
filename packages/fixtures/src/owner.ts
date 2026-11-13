@@ -1,7 +1,7 @@
 import type { ContentPackageInput } from '@de-trainer/core';
 import { FIXTURE_MEDIA } from './media';
 
-// Test package for an owner bank: dev seed and server tests. Real content comes from Nomir.
+// Test package for an owner bank: dev seed and server tests. Real content comes from Lumi.
 
 const src = (tab: string, lesson_date: string) => [{ doc: 'workbook-test-doc', tab, lesson_date }];
 

@@ -13,6 +13,7 @@ import {
   findAgentByName,
   grantAgent,
   listUsers,
+  renameAgent,
   setAgentStatus,
   setUserStatus,
   upsertBank,
@@ -30,6 +31,7 @@ const USAGE = `Usage: admin <command> [options]
   agent:add    --name <name> --client-id <Access service token Client ID>
   agent:grant  --name <name> (--user <email> | --bank <bank_id>) --perm <p1,p2,...>
   agent:revoke --name <name>
+  agent:rename --name <name> --to <new name>   same service token and grants
   media:put    --bank <bank_id> --file <image>          upload an image for packages
   package:publish --bank <bank_id> --file <package.json>  manual import, same checks as the API
   export       --email <email> [--file <out.json>]      full learner export
@@ -50,6 +52,7 @@ const { positionals, values } = parseArgs({
     user: { type: 'string' },
     perm: { type: 'string' },
     'client-id': { type: 'string' },
+    to: { type: 'string' },
     role: { type: 'string' },
     file: { type: 'string' },
   },
@@ -121,6 +124,13 @@ try {
     case 'agent:revoke':
       console.log(setAgentStatus(db, need('name'), 'revoked') ? 'revoked' : 'no such agent');
       break;
+    case 'agent:rename': {
+      const result = renameAgent(db, need('name'), need('to'));
+      if (result === 'missing') fail('no such agent');
+      if (result === 'taken') fail(`agent ${values.to} already exists`);
+      console.log(`agent ${values.name} → ${values.to}`);
+      break;
+    }
     case 'media:put': {
       const buf = readFileSync(need('file'));
       console.log(JSON.stringify(content.putMedia(need('bank'), sha256(buf), buf)));

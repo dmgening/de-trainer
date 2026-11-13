@@ -25,7 +25,7 @@ import { sniffImage } from './image';
 export const sha256 = (data: string | Buffer) => createHash('sha256').update(data).digest('hex');
 export const contentHash = (body: unknown) => sha256(stableStringify(body));
 
-/** A refusal Nomir can act on: status, machine code, message and field-level issues. */
+/** A refusal Lumi can act on: status, machine code, message and field-level issues. */
 export class ContentError extends Error {
   constructor(
     readonly status: 404 | 409 | 413 | 415 | 422,
@@ -271,7 +271,7 @@ export function createContentService(db: Db, dataDir: string) {
       return json;
     },
 
-    /** Everything in the current version, drafts included: what Nomir works from. */
+    /** Everything in the current version, drafts included: what Lumi works from. */
     current(bankId: string) {
       const b = requireBank(bankId);
       const v = head(bankId);

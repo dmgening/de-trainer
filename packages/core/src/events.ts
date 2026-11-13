@@ -8,7 +8,21 @@ export type SessionMode = z.infer<typeof SessionMode>;
 export const Bucket = z.enum(['weak', 'recent', 'due', 'variety', 'retry']);
 export type Bucket = z.infer<typeof Bucket>;
 
-export const ReasonCode = z.enum(['nomir', 'recent_errors', 'new_topic', 'recent_topic', 'due', 'variety', 'retry', 'practice']);
+/**
+ * 'nomir' is the agent's former name: plans written before the rename carry it in stored events and in
+ * queues on devices that have not updated yet. It stays valid so those still parse; new plans write 'lumi'.
+ */
+export const ReasonCode = z.enum([
+  'lumi',
+  'recent_errors',
+  'new_topic',
+  'recent_topic',
+  'due',
+  'variety',
+  'retry',
+  'practice',
+  'nomir',
+]);
 export type ReasonCode = z.infer<typeof ReasonCode>;
 
 export const PlanItem = z.strictObject({
@@ -158,7 +172,7 @@ export type EventOf<T extends EventType> = Extract<LearnerEvent, { type: T }>;
 
 /** Written by the learner's devices through /api/sync/push. */
 export const CLIENT_EVENT_TYPES = ['session_started', 'attempt', 'session_finished', 'exercise_flagged'] as const;
-/** Written by Nomir through the agent API; the server also writes attempts_invalidated on key fixes. */
+/** Written by Lumi through the agent API; the server also writes attempts_invalidated on key fixes. */
 export const AGENT_EVENT_TYPES = ['diagnosis', 'flag_resolved', 'attempts_invalidated'] as const;
 
 export const ClientEvent = z.discriminatedUnion('type', [
@@ -169,7 +183,7 @@ export const ClientEvent = z.discriminatedUnion('type', [
 ]);
 export type ClientEvent = z.infer<typeof ClientEvent>;
 
-/** What Nomir sends: the server fills in user_id, device_id and client_ts. */
+/** What Lumi sends: the server fills in user_id, device_id and client_ts. */
 export const AgentEventInput = z.discriminatedUnion('type', [
   DiagnosisEvent.pick({ type: true, payload: true }).extend({ event_id: Uuid.optional() }),
   FlagResolvedEvent.pick({ type: true, payload: true }).extend({ event_id: Uuid.optional() }),

@@ -17,7 +17,7 @@ let t: TestServer;
 beforeEach(async () => {
   t = await createTestServer();
   await t.uploadFixtureMedia();
-  await t.call('nomir', 'POST', '/agent/v1/banks/dev/packages', devPackage());
+  await t.call('lumi', 'POST', '/agent/v1/banks/dev/packages', devPackage());
 });
 
 const push = (who: 'alice' | 'bob', events: ClientEvent[]) => t.json(t.call(who, 'POST', '/api/sync/push', { events }));
@@ -52,7 +52,7 @@ describe('push and pull (A11, A12)', () => {
     expect(all.map((e) => e.event_id).sort()).toEqual([...a, ...b].map((e) => e.event_id).sort());
     const phoneSees = [...a, ...(await pull('alice', phoneCursor)).body.events];
     const opts = { bank_id: 'dev', config: DEFAULT_SCHEDULER_CONFIG };
-    const server = await t.json(t.call('nomir', 'GET', `/agent/v1/users/${t.alice.userId}/state`));
+    const server = await t.json(t.call('lumi', 'GET', `/agent/v1/users/${t.alice.userId}/state`));
     expect(deriveState(phoneSees, opts)).toEqual(server.body.banks[0].state);
     expect(deriveState(all, opts)).toEqual(server.body.banks[0].state);
   });
@@ -90,16 +90,16 @@ describe('push and pull (A11, A12)', () => {
   });
 });
 
-describe("Nomir's cycle (A16, A17)", () => {
-  it('reads raw answers, publishes priorities, and the next session follows them with his reason', async () => {
+describe("Lumi's cycle (A16, A17)", () => {
+  it('reads raw answers, publishes priorities, and the next session follows them with its reason', async () => {
     const wrong = attemptEvent(t.alice.userId, { exercise: 'mit-bus', skill: 'mit-dativ', result: 'wrong' });
     await push('alice', [wrong]);
 
-    const log = await t.json(t.call('nomir', 'GET', `/agent/v1/users/${t.alice.userId}/events?types=attempt`));
+    const log = await t.json(t.call('lumi', 'GET', `/agent/v1/users/${t.alice.userId}/events?types=attempt`));
     expect(log.body.events[0].payload.response).toEqual({ type: 'choice', option_id: 'b' });
     expect(JSON.stringify(log.body)).not.toContain('alice@example.com');
 
-    const diag = await t.call('nomir', 'POST', `/agent/v1/users/${t.alice.userId}/events`, {
+    const diag = await t.call('lumi', 'POST', `/agent/v1/users/${t.alice.userId}/events`, {
       events: [{ type: 'diagnosis', payload: { attempt_ids: [wrong.event_id], skill_ids: ['mit-dativ'], note: 'Путает Dativ и Akkusativ после mit' } }],
     });
     expect(diag.status).toBe(200);
@@ -110,7 +110,7 @@ describe("Nomir's cycle (A16, A17)", () => {
         { recommendation_id: 'r1', scope: { type: 'skill', id: 'mit-dativ' }, weight: 1, reason: 'Ошибки в Dativ после mit', expires_at: '2099-01-01T00:00:00Z' },
       ],
     };
-    expect((await t.call('nomir', 'PUT', `/agent/v1/users/${t.alice.userId}/recommendations`, set)).status).toBe(200);
+    expect((await t.call('lumi', 'PUT', `/agent/v1/users/${t.alice.userId}/recommendations`, set)).status).toBe(200);
 
     const p = await pull('alice');
     expect(p.body.recommendations.version).toBe(1);
@@ -125,10 +125,10 @@ describe("Nomir's cycle (A16, A17)", () => {
       size: 5,
       mode: 'recommended',
     });
-    expect(plan.filter((i) => i.reason.code === 'nomir').map((i) => i.reason.text)).toContain('Ошибки в Dativ после mit');
+    expect(plan.filter((i) => i.reason.code === 'lumi').map((i) => i.reason.text)).toContain('Ошибки в Dativ после mit');
   });
 
-  it('a flagged exercise stays hidden until Nomir resolves it', async () => {
+  it('a flagged exercise stays hidden until Lumi resolves it', async () => {
     const flag: ClientEvent = {
       event_id: uuidv7(),
       user_id: t.alice.userId,
@@ -139,11 +139,11 @@ describe("Nomir's cycle (A16, A17)", () => {
     };
     await push('alice', [flag]);
     const opts = { bank_id: 'dev', config: DEFAULT_SCHEDULER_CONFIG };
-    const flagged = await t.json(t.call('nomir', 'GET', `/agent/v1/users/${t.alice.userId}/events?types=exercise_flagged`));
+    const flagged = await t.json(t.call('lumi', 'GET', `/agent/v1/users/${t.alice.userId}/events?types=exercise_flagged`));
     expect(flagged.body.events).toHaveLength(1);
     expect(deriveState((await pull('alice')).body.events, opts).flagged['mit-bus']).toBeDefined();
 
-    await t.call('nomir', 'POST', `/agent/v1/users/${t.alice.userId}/events`, {
+    await t.call('lumi', 'POST', `/agent/v1/users/${t.alice.userId}/events`, {
       events: [{ type: 'flag_resolved', payload: { bank_id: 'dev', exercise_id: 'mit-bus', flag_id: flag.payload.flag_id, decision: 'rejected', note: 'Ключ верный' } }],
     });
     expect(deriveState((await pull('alice')).body.events, opts).flagged['mit-bus']).toBeUndefined();
@@ -151,9 +151,9 @@ describe("Nomir's cycle (A16, A17)", () => {
 
   it('tunes the scheduler only inside the bounds', async () => {
     const bad = { ...DEFAULT_SCHEDULER_CONFIG, default_session_size: 500 };
-    expect((await t.call('nomir', 'PUT', `/agent/v1/users/${t.alice.userId}/scheduler-config`, bad)).status).toBe(422);
+    expect((await t.call('lumi', 'PUT', `/agent/v1/users/${t.alice.userId}/scheduler-config`, bad)).status).toBe(422);
     const good = { ...DEFAULT_SCHEDULER_CONFIG, weights: { weak: 0.5, recent: 0.2, due: 0.2, variety: 0.1 } };
-    expect((await t.call('nomir', 'PUT', `/agent/v1/users/${t.alice.userId}/scheduler-config`, good)).status).toBe(200);
+    expect((await t.call('lumi', 'PUT', `/agent/v1/users/${t.alice.userId}/scheduler-config`, good)).status).toBe(200);
     expect((await pull('alice')).body.scheduler_config).toEqual({ version: 1, config: good });
   });
 });
@@ -165,9 +165,9 @@ describe('two learners (A18)', () => {
     expect((await t.call('bob', 'GET', '/api/banks/dev/snapshot')).status).toBe(404);
     expect((await t.call('bob', 'GET', '/api/banks/dev/versions')).status).toBe(404);
     for (const path of ['events', 'state', 'recommendations', 'scheduler-config']) {
-      expect((await t.call('nomir', 'GET', `/agent/v1/users/${t.bob.userId}/${path}`)).status).toBe(403);
+      expect((await t.call('lumi', 'GET', `/agent/v1/users/${t.bob.userId}/${path}`)).status).toBe(403);
     }
-    const users = await t.json(t.call('nomir', 'GET', '/agent/v1/users'));
+    const users = await t.json(t.call('lumi', 'GET', '/agent/v1/users'));
     expect(users.body.users.map((u: { user_id: string }) => u.user_id)).toEqual([t.alice.userId]);
     expect(JSON.stringify(users.body)).not.toMatch(/@example\.com|Alice/);
   });

@@ -1,10 +1,10 @@
 # de-class
 
-Мобильный тренажёр немецкого по материалам реальных занятий. PWA с полным офлайном; контент и анализ ошибок готовит агент Номир через API.
+Мобильный тренажёр немецкого по материалам реальных занятий. PWA с полным офлайном; контент и анализ ошибок готовит агент Луми через API.
 
 - Архитектура: [docs/tech-spec.md](docs/tech-spec.md)
 - Эксплуатация и деплой: [docs/ops.md](docs/ops.md)
-- API для Номира: [docs/agent-api.md](docs/agent-api.md)
+- API для Луми: [docs/agent-api.md](docs/agent-api.md)
 - Инструкция для Димы: [docs/guide.md](docs/guide.md)
 - Отчёт приёмки: [docs/acceptance.md](docs/acceptance.md)
 
@@ -34,7 +34,7 @@ pnpm dev
 
 Собранное приложение так, как его отдаёт прод: `pnpm build`, затем `node apps/server/dist/main.js` (`APP_ENV` по умолчанию `dev`) — owner на `http://127.0.0.1:8080/`, демо на `/demo/`.
 
-API Номира локально:
+API Луми локально:
 
 ```bash
 TOKEN=$(pnpm -s admin dev:token --client-id dev-agent.access)

@@ -2,7 +2,7 @@
 
 Сервер — NixOS-контейнер в хоумлабе, наружу через Cloudflare Tunnel и Caddy, вход через Cloudflare Access. Адрес — `de-class.vta.dev`. Архитектура — [tech-spec.md](tech-spec.md).
 
-Хост, Access-приложения, сервисный токен Номира, маршрут туннеля и бэкапы описаны кодом в репозитории хоумлаба `dmgening/homelab`: ранбук `docs/runbooks/de-class.md`, Cloudflare — `tofu/cloudflare/de-class.tf`, хост — `nix/hosts/de-class.nix`. Здесь — то, что относится к самому приложению.
+Хост, Access-приложения, сервисный токен Луми, маршрут туннеля и бэкапы описаны кодом в репозитории хоумлаба `dmgening/homelab`: ранбук `docs/runbooks/de-class.md`, Cloudflare — `tofu/cloudflare/de-class.tf`, хост — `nix/hosts/de-class.nix`. Здесь — то, что относится к самому приложению.
 
 Второй способ запуска — образ под Podman за Traefik на apps-хосте хоумлаба, см. [раздел 6](#6-контейнер-podman-и-traefik). Cloudflare, пользователи и проверка после деплоя (разделы 2-4) от способа не зависят.
 
@@ -36,11 +36,11 @@ services.de-trainer = {
 | Приложение | Адреса | Политика |
 |---|---|---|
 | de-class owner | `de-class.vta.dev/api`, `de-class.vta.dev/auth` | Allow, IdP Google, email учеников; сессия 30 дней |
-| de-class agent | `de-class.vta.dev/agent` | Service Auth: сервисный токен `nomir` (бессрочный) |
+| de-class agent | `de-class.vta.dev/agent` | Service Auth: сервисный токен `lumi` (бессрочный) |
 
-Остальное (оболочка, `/demo`, `/healthz`) идёт без Access. Туннель дополнительно проверяет JWT на `/api`, `/auth` и `/agent`; сервер проверяет его ещё раз. `de-class.vta.dev` нет в split DNS хоумлаба: из домашней сети, в том числе Номир с Hermes, трафик тоже идёт через Access.
+Остальное (оболочка, `/demo`, `/healthz`) идёт без Access. Туннель дополнительно проверяет JWT на `/api`, `/auth` и `/agent`; сервер проверяет его ещё раз. `de-class.vta.dev` нет в split DNS хоумлаба: из домашней сети, в том числе Луми с Hermes, трафик тоже идёт через Access.
 
-Client ID и Secret токена `nomir` лежат в секрете Hermes (`hermes_env`), Client ID нужен ещё для `agent:add` ниже.
+Client ID и Secret токена `lumi` лежат в секрете Hermes (`hermes_env`), Client ID нужен ещё для `agent:add` ниже.
 
 ## 3. Первый запуск и пользователи
 
@@ -49,9 +49,9 @@ Client ID и Secret токена `nomir` лежат в секрете Hermes (`h
 ```bash
 de-trainer-admin bank:add --id main --title "Max/Dima B1"
 de-trainer-admin user:add --email <gmail Димы> --name Дима --bank main --role owner
-de-trainer-admin agent:add --name nomir --client-id <Client ID токена>
-de-trainer-admin agent:grant --name nomir --user <gmail Димы> --perm events:read,events:write,recommendations:write,scheduler:write
-de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
+de-trainer-admin agent:add --name lumi --client-id <Client ID токена>
+de-trainer-admin agent:grant --name lumi --user <gmail Димы> --perm events:read,events:write,recommendations:write,scheduler:write
+de-trainer-admin agent:grant --name lumi --bank main --perm bank:publish
 ```
 
 `--role owner` даёт право откатывать банк из приложения; остальные участники банка — `learner`. Новый ученик: email в `de_class.emails` в хоумлабе (Access) и `user:add`.
@@ -67,6 +67,7 @@ de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 | `export --email <gmail> --file out.json` | Полная выгрузка ученика |
 | `restore --email <gmail> --file out.json` | Залить журнал из выгрузки (идемпотентно по `event_id`) |
 | `user:disable` / `agent:revoke` | Закрыть доступ без релиза |
+| `agent:rename --name <старое> --to <новое>` | Переименовать агента: тот же сервисный токен и права. Новые события пишутся от `agent:<новое>`, старые сохраняют прежнее имя в `actor` |
 
 Логи: `journalctl -u de-trainer`.
 
@@ -74,7 +75,7 @@ de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 
 1. `curl https://de-class.vta.dev/healthz` → `ok`.
 2. Браузер: `https://de-class.vta.dev` → «Войти через Google» → после входа видно имя и один банк.
-3. Номир: `curl -H "CF-Access-Client-Id: <id>" -H "CF-Access-Client-Secret: <secret>" https://de-class.vta.dev/agent/v1/whoami` → агент `nomir` и его права. Дальше Номир работает по [agent-api.md](agent-api.md): загружает картинки, проверяет и публикует первый пакет.
+3. Луми: `curl -H "CF-Access-Client-Id: <id>" -H "CF-Access-Client-Secret: <secret>" https://de-class.vta.dev/agent/v1/whoami` → агент `lumi` и его права. Дальше Луми работает по [agent-api.md](agent-api.md): загружает картинки, проверяет и публикует первый пакет.
 4. Без токена `https://de-class.vta.dev/api/me` и `/agent/v1/whoami` не открываются.
 5. `https://de-class.vta.dev/demo/` открывается без входа.
 
@@ -84,7 +85,7 @@ de-trainer-admin agent:grant --name nomir --bank main --perm bank:publish
 
 Сейчас — ежедневный снимок контейнера в Proxmox (vzdump; 7 дневных, 4 недельных, 3 месячных). В нём весь `/var/lib/de-trainer`: SQLite и картинки из `media/`. Снимок лежит дома, поэтому следующий шаг — копия вне дома: Litestream в R2 через `services.litestream` на хосте, ключи бакета в sops хоумлаба (ранбук хоумлаба, «Next: Litestream»). В nixpkgs Litestream 0.5, формат конфига отличается от 0.3.
 
-Litestream копирует только SQLite. Картинки лежат в `/var/lib/de-trainer/media/` по хешу; до ежедневного `rclone` после потери диска Номир загружает их заново (`PUT …/media/{sha256}` идемпотентен).
+Litestream копирует только SQLite. Картинки лежат в `/var/lib/de-trainer/media/` по хешу; до ежедневного `rclone` после потери диска Луми загружает их заново (`PUT …/media/{sha256}` идемпотентен).
 
 ## 6. Контейнер: Podman и Traefik
 

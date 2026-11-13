@@ -4,7 +4,7 @@ import { AgentEventInput, BankSnapshot, ClientEvent, ContentPackage, Recommendat
 const json = (schema: z.ZodType) => z.toJSONSchema(schema, { io: 'input', unrepresentable: 'any' });
 
 /**
- * JSON Schemas for Nomir, generated from the same Zod schemas the server validates with.
+ * JSON Schemas for Lumi, generated from the same Zod schemas the server validates with.
  * Cross-field rules (references, placeholders, revisions) are checked on publish and reported as issues.
  */
 export const agentSchemas = {

@@ -11,7 +11,7 @@ test('A05 + A14: a package published mid-session reaches the device but changes 
   await answer(page, v1, 'correct');
   await page.getByRole('button', { name: 'Дальше' }).click();
 
-  // Nomir rewords every exercise: revision 2 of all of them.
+  // Lumi rewords every exercise: revision 2 of all of them.
   const pkg = ContentPackage.parse(ownerPackage('e2e-update'));
   const v2 = {
     ...pkg,

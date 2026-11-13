@@ -123,7 +123,7 @@ export function buildSession(input: BuildSessionInput): PlanItem[] {
       })
       .filter((x) => x.best && x.best.weight > 0);
     scored.sort((a, b) => b.best!.weight - a.best!.weight || bySeen(a.ex, b.ex) || byTie(a.ex, b.ex));
-    lists.weak = scored.map(({ ex, best }) => ({ ex, reason: { code: 'nomir', text: best!.reason } }));
+    lists.weak = scored.map(({ ex, best }) => ({ ex, reason: { code: 'lumi', text: best!.reason } }));
   } else {
     const weak = new Set(Object.entries(state.units).filter(([, u]) => u.status === 'needs_practice').map(([k]) => k));
     const score = (ex: Exercise) => exerciseUnits(ex).filter((k) => weak.has(k)).length;
@@ -206,7 +206,7 @@ export function buildSession(input: BuildSessionInput): PlanItem[] {
     exercise_id: ex.exercise_id,
     revision: ex.revision,
     bucket,
-    reason: mode === 'practice' && reason.code !== 'nomir' ? { code: 'practice' } : reason,
+    reason: mode === 'practice' && reason.code !== 'lumi' ? { code: 'practice' } : reason,
   }));
 }
 

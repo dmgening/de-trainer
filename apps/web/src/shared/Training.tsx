@@ -211,7 +211,7 @@ function Question(props: {
         <div className="flag-form">
           <label htmlFor="flag-comment">Что не так с заданием? (необязательно)</label>
           <textarea id="flag-comment" rows={3} maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} />
-          <p className="muted">Задание перестанет выдаваться, пока Номир его не проверит.</p>
+          <p className="muted">Задание перестанет выдаваться, пока Луми его не проверит.</p>
           <div className="secondary-actions">
             <button type="button" className="button" onClick={() => void flag()}>
               Отметить спорным

@@ -1,5 +1,5 @@
 // Fresh data for the E2E server: banks with the owner test package, one learner per scenario,
-// and a Nomir stand-in whose dev token is written to DATA_DIR/agent-token.
+// and a Lumi stand-in whose dev token is written to DATA_DIR/agent-token.
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { ContentPackage } from '@de-trainer/core';
@@ -20,7 +20,7 @@ mkdirSync(config.dataDir, { recursive: true });
 const { db, sqlite } = openDb(config.databasePath);
 runMigrations(db, config.migrationsDir);
 const content = createContentService(db, config.dataDir);
-const agent = addAgent(db, { name: 'nomir-e2e', accessClientId: AGENT_CLIENT_ID });
+const agent = addAgent(db, { name: 'lumi-e2e', accessClientId: AGENT_CLIENT_ID });
 
 for (const bankId of new Set(Object.values(BANK_OF))) {
   upsertBank(db, { bankId, title: `E2E ${bankId}`, audience: 'owner' });

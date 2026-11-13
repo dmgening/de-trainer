@@ -9,7 +9,7 @@ import { createApp } from '../src/app';
 import { createVerifier } from '../src/auth/access';
 import { loadConfig, type Config } from '../src/config';
 import { openDb, runMigrations } from '../src/db/client';
-import { addAgent, addBankMember, addUser, grantAgent, setAgentStatus, setUserStatus, upsertBank } from '../src/db/repo';
+import { addAgent, addBankMember, addUser, grantAgent, renameAgent, setAgentStatus, setUserStatus, upsertBank } from '../src/db/repo';
 
 const ISSUER = 'https://test-team.cloudflareaccess.com';
 const USER_AUD = 'aud-user';
@@ -63,9 +63,9 @@ async function setup() {
   addBankMember(db, 'bank-a', alice.userId);
   addBankMember(db, 'bank-b', bob.userId);
 
-  const nomir = addAgent(db, { name: 'nomir', accessClientId: 'nomir.access' });
-  grantAgent(db, nomir.agentId, 'user', alice.userId, ['events:read']);
-  grantAgent(db, nomir.agentId, 'bank', 'bank-a', ['bank:publish']);
+  const lumi = addAgent(db, { name: 'lumi', accessClientId: 'lumi.access' });
+  grantAgent(db, lumi.agentId, 'user', alice.userId, ['events:read']);
+  grantAgent(db, lumi.agentId, 'bank', 'bank-a', ['bank:publish']);
   addAgent(db, { name: 'old', accessClientId: 'old.access' });
   setAgentStatus(db, 'old', 'revoked');
 
@@ -79,7 +79,7 @@ async function setup() {
   const get = (url: string, token?: string) =>
     app.request(url, { headers: token ? { 'Cf-Access-Jwt-Assertion': token } : {} });
 
-  return { get, sign, otherKey: other.privateKey, alice, bob };
+  return { get, sign, otherKey: other.privateKey, alice, bob, db };
 }
 
 let t: Awaited<ReturnType<typeof setup>>;
@@ -148,7 +148,7 @@ describe('/api — user auth', () => {
   });
 
   it('never lets a service token act as a user', async () => {
-    const token = await t.sign({ common_name: 'nomir.access', email: 'alice@example.com' });
+    const token = await t.sign({ common_name: 'lumi.access', email: 'alice@example.com' });
     expect((await t.get('/api/me', token)).status).toBe(403);
   });
 
@@ -160,10 +160,10 @@ describe('/api — user auth', () => {
 
 describe('/agent/v1 — service token auth', () => {
   it('returns the agent and its grants', async () => {
-    const res = await t.get('/agent/v1/whoami', await t.sign({ common_name: 'nomir.access' }, { aud: AGENT_AUD }));
+    const res = await t.get('/agent/v1/whoami', await t.sign({ common_name: 'lumi.access' }, { aud: AGENT_AUD }));
     expect(res.status).toBe(200);
     const body = AgentWhoamiResponse.parse(await res.json());
-    expect(body.name).toBe('nomir');
+    expect(body.name).toBe('lumi');
     expect(body.grants).toEqual(
       expect.arrayContaining([
         { scope_type: 'user', scope_id: t.alice.userId, permission: 'events:read' },
@@ -181,6 +181,26 @@ describe('/agent/v1 — service token auth', () => {
   it('rejects an unknown or revoked service token', async () => {
     expect((await t.get('/agent/v1/whoami', await t.sign({ common_name: 'x.access' }, { aud: AGENT_AUD }))).status).toBe(403);
     expect((await t.get('/agent/v1/whoami', await t.sign({ common_name: 'old.access' }, { aud: AGENT_AUD }))).status).toBe(403);
+  });
+});
+
+describe('agent:rename', () => {
+  it('renames an agent in place: the same service token keeps working with the same grants', async () => {
+    const agent = addAgent(t.db, { name: 'before', accessClientId: 'rename.access' });
+    grantAgent(t.db, agent.agentId, 'bank', 'bank-b', ['bank:publish']);
+    const token = await t.sign({ common_name: 'rename.access' }, { aud: AGENT_AUD });
+
+    expect(renameAgent(t.db, 'before', 'after')).toBe('renamed');
+    const res = await t.get('/agent/v1/whoami', token);
+    expect(res.status).toBe(200);
+    const body = AgentWhoamiResponse.parse(await res.json());
+    expect(body).toMatchObject({ agent_id: agent.agentId, name: 'after' });
+    expect(body.grants).toEqual([{ scope_type: 'bank', scope_id: 'bank-b', permission: 'bank:publish' }]);
+  });
+
+  it('refuses a name another agent has and an agent that does not exist', () => {
+    expect(renameAgent(t.db, 'lumi', 'old')).toBe('taken');
+    expect(renameAgent(t.db, 'ghost', 'spirit')).toBe('missing');
   });
 });
 
