@@ -33,8 +33,8 @@ const can = (agent: AuthedAgent, scopeType: 'user' | 'bank', scopeId: string, pe
   agent.grants.some((g) => g.scopeType === scopeType && g.scopeId === scopeId && g.permission === permission);
 
 /**
- * Nomir's API. Every route checks a grant on the exact user or bank in the path; users are visible
- * only by opaque user_id (no email, no name). Nomir can add events but never change or delete them.
+ * Lumi's API. Every route checks a grant on the exact user or bank in the path; users are visible
+ * only by opaque user_id (no email, no name). Lumi can add events but never change or delete them.
  */
 export function agentRoutes(deps: Deps) {
   const { db, content, learner } = deps;

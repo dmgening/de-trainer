@@ -139,7 +139,7 @@ export const events = sqliteTable(
   (t) => [index('events_user_seq').on(t.userId, t.seq)],
 );
 
-/** Nomir's priorities: each PUT stores a new version of the whole set. */
+/** Lumi's priorities: each PUT stores a new version of the whole set. */
 export const recommendationSets = sqliteTable(
   'recommendation_sets',
   {

@@ -31,7 +31,7 @@ test('A01: ten questions with feedback, summary and history, stored on the serve
     .toBe(outcomes.length);
 });
 
-test("A16: Nomir's priority shows on the home screen and leads the next session", async ({ page, request }) => {
+test("A16: Lumi's priority shows on the home screen and leads the next session", async ({ page, request }) => {
   await login(page, USERS.priorities);
   const bank = await snapshot(page, 'dev');
   const { user_id } = await me(page);
@@ -50,7 +50,7 @@ test("A16: Nomir's priority shows on the home screen and leads the next session"
   expect(prioritised.sort()).toEqual(['mit-bus', 'mit-zug']);
 });
 
-test('A17: a disputed exercise is hidden until Nomir resolves it', async ({ page, request }) => {
+test('A17: a disputed exercise is hidden until Lumi resolves it', async ({ page, request }) => {
   await login(page, USERS.flags);
   const bank = await snapshot(page, 'dev');
   const { user_id } = await me(page);

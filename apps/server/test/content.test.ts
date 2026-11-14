@@ -8,7 +8,7 @@ beforeEach(async () => {
   t = await createTestServer();
 });
 
-const publish = (body: unknown) => t.json(t.call('nomir', 'POST', '/agent/v1/banks/dev/packages', body));
+const publish = (body: unknown) => t.json(t.call('lumi', 'POST', '/agent/v1/banks/dev/packages', body));
 
 describe('publication through the agent API (A05)', () => {
   it('publishes a package and the learner downloads it without a rebuild', async () => {
@@ -29,7 +29,7 @@ describe('publication through the agent API (A05)', () => {
     expect(img.headers.get('content-type')).toBe('image/png');
   });
 
-  it('rejects a broken package as a whole, with paths Nomir can fix', async () => {
+  it('rejects a broken package as a whole, with paths Lumi can fix', async () => {
     await t.uploadFixtureMedia();
     await publish(devPackage());
     const broken = devPackage({ package_version: 2 });
@@ -54,7 +54,7 @@ describe('publication through the agent API (A05)', () => {
 
   it('validates without writing', async () => {
     await t.uploadFixtureMedia();
-    const res = await t.json(t.call('nomir', 'POST', '/agent/v1/banks/dev/packages/validate', devPackage()));
+    const res = await t.json(t.call('lumi', 'POST', '/agent/v1/banks/dev/packages/validate', devPackage()));
     expect(res.body).toMatchObject({ status: 'valid', version: 1 });
     expect(res.body.diff.added.length).toBeGreaterThan(10);
     expect((await t.json(t.call('alice', 'GET', '/api/banks/dev/versions'))).body.head).toBeNull();
@@ -109,8 +109,8 @@ describe('media upload', () => {
     const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>');
     const { createHash } = await import('node:crypto');
     const svgSha = createHash('sha256').update(svg).digest('hex');
-    expect((await t.call('nomir', 'PUT', `/agent/v1/banks/dev/media/${svgSha}`, undefined, svg)).status).toBe(415);
-    expect((await t.call('nomir', 'PUT', `/agent/v1/banks/dev/media/${'0'.repeat(64)}`, undefined, svg)).status).toBe(422);
+    expect((await t.call('lumi', 'PUT', `/agent/v1/banks/dev/media/${svgSha}`, undefined, svg)).status).toBe(415);
+    expect((await t.call('lumi', 'PUT', `/agent/v1/banks/dev/media/${'0'.repeat(64)}`, undefined, svg)).status).toBe(422);
   });
 
   it('serves a file only to members of a bank that holds it', async () => {
@@ -120,23 +120,23 @@ describe('media upload', () => {
   });
 });
 
-describe("Nomir's limits (A09, A15)", () => {
+describe("Lumi's limits (A09, A15)", () => {
   it('cannot publish to a bank without a grant', async () => {
-    expect((await t.call('nomir', 'POST', '/agent/v1/banks/bob/packages', devPackage({ bank_id: 'bob' }))).status).toBe(403);
+    expect((await t.call('lumi', 'POST', '/agent/v1/banks/bob/packages', devPackage({ bank_id: 'bob' }))).status).toBe(403);
   });
 
   it('cannot write learner events or rewrite the log', async () => {
     const attempt = attemptEvent(t.alice.userId, { exercise: 'x', skill: 's', result: 'correct' });
-    const res = await t.call('nomir', 'POST', `/agent/v1/users/${t.alice.userId}/events`, { events: [{ type: 'attempt', payload: attempt.payload }] });
+    const res = await t.call('lumi', 'POST', `/agent/v1/users/${t.alice.userId}/events`, { events: [{ type: 'attempt', payload: attempt.payload }] });
     expect(res.status).toBe(400);
     for (const method of ['DELETE', 'PUT', 'PATCH']) {
-      expect((await t.call('nomir', method, `/agent/v1/users/${t.alice.userId}/events`, {})).status).toBe(404);
+      expect((await t.call('lumi', method, `/agent/v1/users/${t.alice.userId}/events`, {})).status).toBe(404);
     }
-    expect((await t.call('nomir', 'POST', '/agent/v1/users', { email: 'x@y.z' })).status).toBe(404);
+    expect((await t.call('lumi', 'POST', '/agent/v1/users', { email: 'x@y.z' })).status).toBe(404);
   });
 
   it('cannot use the learner API with its service token', async () => {
-    expect((await t.call('nomir', 'GET', '/api/sync/pull')).status).toBe(401);
+    expect((await t.call('lumi', 'GET', '/api/sync/pull')).status).toBe(401);
   });
 
   it('gets readable errors without internals for HTML in content', async () => {
@@ -146,15 +146,15 @@ describe("Nomir's limits (A09, A15)", () => {
     const res = await publish(pkg);
     expect(res.status).toBe(422);
     expect(JSON.stringify(res.body)).toContain('HTML markup and entities are not allowed');
-    expect(JSON.stringify(res.body)).not.toMatch(/at .*\.ts|stack|ACCESS_|nomir\.access/);
+    expect(JSON.stringify(res.body)).not.toMatch(/at .*\.ts|stack|ACCESS_|lumi\.access/);
   });
 
   it('answers malformed JSON with 400', async () => {
-    expect((await t.call('nomir', 'POST', '/agent/v1/banks/dev/packages', undefined, '{oops')).status).toBe(400);
+    expect((await t.call('lumi', 'POST', '/agent/v1/banks/dev/packages', undefined, '{oops')).status).toBe(400);
   });
 
   it('publishes JSON Schemas for packages and priorities', async () => {
-    const res = await t.json(t.call('nomir', 'GET', '/agent/v1/schema/package'));
+    const res = await t.json(t.call('lumi', 'GET', '/agent/v1/schema/package'));
     expect(res.status).toBe(200);
     expect(res.body.properties.exercises).toBeDefined();
   });

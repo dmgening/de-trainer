@@ -121,7 +121,7 @@ export async function kv<T>(page: Page, key: string): Promise<T | undefined> {
   }, key) as Promise<T | undefined>;
 }
 
-/** Nomir's side, through the real agent API with a dev-signed service token. */
+/** Lumi's side, through the real agent API with a dev-signed service token. */
 export function agent(request: APIRequestContext) {
   const headers = { 'Cf-Access-Jwt-Assertion': readFileSync(path.join(DATA_DIR, 'agent-token'), 'utf8') };
   return {

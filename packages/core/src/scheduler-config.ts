@@ -7,7 +7,7 @@ export const SCHEDULER_VERSION = 1;
 const share = z.number().min(0).max(0.7);
 
 /**
- * Scheduler parameters. The bounds below are the limits within which Nomir may tune them (PRD §7.2);
+ * Scheduler parameters. The bounds below are the limits within which Lumi may tune them (PRD §7.2);
  * values are pilot hypotheses, not facts about the learner.
  */
 export const SchedulerConfig = z
@@ -62,7 +62,7 @@ export const Recommendation = z.strictObject({
 });
 export type Recommendation = z.infer<typeof Recommendation>;
 
-/** Nomir replaces the whole set at once; an empty list clears it. */
+/** Lumi replaces the whole set at once; an empty list clears it. */
 export const RecommendationSet = z.strictObject({
   generated_at: IsoDateTime,
   recommendations: z.array(Recommendation).max(200),

@@ -11,7 +11,7 @@ export const STATUS_LABEL: Record<UnitStatus, string> = {
 };
 
 export const REASON_LABEL: Record<ReasonCode, string> = {
-  nomir: 'приоритет Номира',
+  lumi: 'приоритет Луми',
   recent_errors: 'ошибки в последних попытках',
   new_topic: 'новая тема',
   recent_topic: 'недавнее занятие',
@@ -19,6 +19,7 @@ export const REASON_LABEL: Record<ReasonCode, string> = {
   variety: 'для разнообразия',
   retry: 'ещё раз после ошибки',
   practice: 'свободная практика',
+  nomir: 'приоритет Луми', // legacy code from before the rename
 };
 
 export const RESULT_LABEL: Record<AttemptResult, string> = {

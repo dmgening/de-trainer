@@ -19,7 +19,7 @@ const ALL_USER_PERMS: Permission[] = ['events:read', 'events:write', 'recommenda
 
 /**
  * A real server in process: real SQLite (in memory), real data directory, real JWT checks.
- * Two learners (alice owns bank "dev", bob owns "bob") and Nomir with grants on alice only.
+ * Two learners (alice owns bank "dev", bob owns "bob") and Lumi with grants on alice only.
  */
 export async function createTestServer() {
   const { privateKey, publicKey } = await generateKeyPair('RS256');
@@ -43,16 +43,16 @@ export async function createTestServer() {
   const bob = addUser(db, { email: 'bob@example.com', displayName: 'Bob' });
   addBankMember(db, 'dev', alice.userId, 'owner');
   addBankMember(db, 'bob', bob.userId, 'owner');
-  const nomir = addAgent(db, { name: 'nomir', accessClientId: 'nomir.access' });
-  grantAgent(db, nomir.agentId, 'user', alice.userId, ALL_USER_PERMS);
-  grantAgent(db, nomir.agentId, 'bank', 'dev', ['bank:publish']);
+  const lumi = addAgent(db, { name: 'lumi', accessClientId: 'lumi.access' });
+  grantAgent(db, lumi.agentId, 'user', alice.userId, ALL_USER_PERMS);
+  grantAgent(db, lumi.agentId, 'bank', 'dev', ['bank:publish']);
 
   const app = createApp({ config, db, verify: createVerifier(jwks, ISSUER), logger: pino({ level: 'silent' }) });
 
   const tokens = {
     alice: await sign({ email: 'alice@example.com' }, USER_AUD),
     bob: await sign({ email: 'bob@example.com' }, USER_AUD),
-    nomir: await sign({ common_name: 'nomir.access' }, AGENT_AUD),
+    lumi: await sign({ common_name: 'lumi.access' }, AGENT_AUD),
   };
   type Who = keyof typeof tokens;
   const call = (who: Who | null, method: string, url: string, body?: unknown, raw?: RequestInit['body']) =>
@@ -72,7 +72,7 @@ export async function createTestServer() {
 
   const uploadFixtureMedia = () => {
     const m = FIXTURE_MEDIA.room;
-    return call('nomir', 'PUT', `/agent/v1/banks/dev/media/${m.sha256}`, undefined, readMedia(m.file));
+    return call('lumi', 'PUT', `/agent/v1/banks/dev/media/${m.sha256}`, undefined, readMedia(m.file));
   };
 
   return { app, db, dataDir, alice, bob, call, json, uploadFixtureMedia, sign };

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 export const PORT = 8181;
 export const BASE_URL = `http://127.0.0.1:${PORT}`;
 export const DATA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '.data');
-export const AGENT_CLIENT_ID = 'nomir-e2e.access';
+export const AGENT_CLIENT_ID = 'lumi-e2e.access';
 
 /** One learner per scenario, so their logs never mix. */
 export const USERS = {

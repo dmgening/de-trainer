@@ -178,7 +178,7 @@ describe('key fixes and flags (A06, A17)', () => {
     expect(state.units['skill:dativ']).toBeUndefined();
   });
 
-  it('hides a flagged exercise until Nomir resolves it', () => {
+  it('hides a flagged exercise until Lumi resolves it', () => {
     const flag: LearnerEvent = {
       event_id: uuid(),
       user_id: USER,
@@ -191,7 +191,7 @@ describe('key fixes and flags (A06, A17)', () => {
     const resolved: LearnerEvent = {
       event_id: uuid(),
       user_id: USER,
-      device_id: 'agent:nomir',
+      device_id: 'agent:lumi',
       client_ts: '2026-11-02T10:00:00Z',
       type: 'flag_resolved',
       payload: { bank_id: 'b', exercise_id: 'ex1', decision: 'fixed', revision: 2 },
@@ -271,13 +271,13 @@ describe('session building (A04)', () => {
     expect(plan.find((p) => p.exercise_id === 'old0')?.reason.code).toBe('due');
   });
 
-  it('puts exercises on recent mistakes first when Nomir has no active priorities', () => {
+  it('puts exercises on recent mistakes first when Lumi has no active priorities', () => {
     const history = [attempt({ date: '2026-11-09', result: 'wrong', exercise: 'mid0', skill: 's-mid1' })];
     const plan = buildSession({ ...base, bank: bank(exercises), state: derive(history), size: 10 });
     expect(plan.find((p) => p.exercise_id === 'mid1')?.reason.code).toBe('recent_errors');
   });
 
-  it("follows Nomir's priorities while they are active and shows his reason (A16)", () => {
+  it("follows Lumi's priorities while they are active and shows its reason (A16)", () => {
     const rec: Recommendation = {
       recommendation_id: 'r1',
       scope: { type: 'skill', id: 's-old3' },
@@ -286,7 +286,7 @@ describe('session building (A04)', () => {
       expires_at: '2026-12-01T00:00:00Z',
     };
     const plan = buildSession({ ...base, bank: bank(exercises), state: derive([]), size: 10, recommendations: [rec] });
-    expect(plan.find((p) => p.exercise_id === 'old3')?.reason).toEqual({ code: 'nomir', text: 'Ошибки в Dativ после mit' });
+    expect(plan.find((p) => p.exercise_id === 'old3')?.reason).toEqual({ code: 'lumi', text: 'Ошибки в Dativ после mit' });
   });
 
   it('limits one family per session while other material exists', () => {

@@ -1,4 +1,4 @@
-# API для Номира
+# API для Луми
 
 Базовый адрес — `https://de-class.vta.dev/agent/v1`. Каждый запрос несёт заголовки сервисного токена Cloudflare Access:
 
@@ -37,7 +37,7 @@ JSON Schema всех тел — `GET /schema` (список) и `GET /schema/{na
 | `GET /users/{user_id}/state` | `events:read` | Состояние по навыкам и элементам знания для каждого банка, тем же алгоритмом, что на устройстве |
 | `GET /banks/{bank_id}` | `bank:publish` | Текущая версия банка со всеми объектами, включая черновики, и история версий |
 
-Типы событий: `session_started`, `attempt`, `session_finished`, `exercise_flagged` пишет устройство; `diagnosis`, `flag_resolved`, `attempts_invalidated` — Номир. В `attempt` есть `response` (сырой ответ: `option_id`, значения пропусков или последовательность плиток), `result` (`correct`, `near_miss`, `wrong`, `skipped`, `revealed`), `parts` по пропускам, `hints_used`, `retry` (повтор после ошибки в той же сессии), `mode` (`recommended` или `practice`) и копия тегов ревизии.
+Типы событий: `session_started`, `attempt`, `session_finished`, `exercise_flagged` пишет устройство; `diagnosis`, `flag_resolved`, `attempts_invalidated` — Луми. В `attempt` есть `response` (сырой ответ: `option_id`, значения пропусков или последовательность плиток), `result` (`correct`, `near_miss`, `wrong`, `skipped`, `revealed`), `parts` по пропускам, `hints_used`, `retry` (повтор после ошибки в той же сессии), `mode` (`recommended` или `practice`) и копия тегов ревизии.
 
 ## Публикация контента
 
@@ -141,4 +141,4 @@ JSON Schema всех тел — `GET /schema` (список) и `GET /schema/{na
 
 - Интервалы ведутся по навыкам и элементам знания: лестница `ladder_days`. Ступень растёт только от ответа без подсказок в рекомендованной тренировке, когда срок наступил, и не больше раза за сессию. Ошибка или показ ответа снижает ступень на одну и ставит повтор на завтра. Свободная практика и повтор после ошибки в той же сессии интервалов не двигают.
 - Статусы: `no_data`, `learning`, `needs_practice` (ошибка в одном из двух последних ответов), `consolidating` (ступень ≥ 2), `stable` (ступень ≥ `stable.min_step`, успехи в `min_days` разных днях на `min_exercises` разных заданиях).
-- Тренировка собирается из четырёх долей по `weights`: слабые места (приоритеты Номира или свежие ошибки), недавние занятия (`recent_lessons` последних по `lesson_order`), повторение по сроку, разнообразие. Одно задание не повторяется, у одного семейства — не больше `max_per_family`, у одной темы — не больше `max_topic_share`.
+- Тренировка собирается из четырёх долей по `weights`: слабые места (приоритеты Луми или свежие ошибки), недавние занятия (`recent_lessons` последних по `lesson_order`), повторение по сроку, разнообразие. Одно задание не повторяется, у одного семейства — не больше `max_per_family`, у одной темы — не больше `max_topic_share`.

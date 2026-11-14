@@ -183,7 +183,7 @@ export async function finishSession(b: Backend, active: ActiveSession, abandoned
 // eslint-disable-next-line no-control-regex
 const clean = (s: string) => s.replace(/[<>&]/g, ' ').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, 1000);
 
-/** Disputed: hidden from sessions at once, even offline, until Nomir resolves it. */
+/** Disputed: hidden from sessions at once, even offline, until Lumi resolves it. */
 export async function flagExercise(b: Backend, ex: Exercise, bankId: string, comment: string, active: ActiveSession | null) {
   const skipCurrent = active && active.queue[active.index]?.exercise_id === ex.exercise_id;
   const next = skipCurrent ? { ...active, index: active.index + 1 } : undefined;

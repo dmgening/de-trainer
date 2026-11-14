@@ -160,7 +160,7 @@ export function OwnerSettings(props: { onSync(): void; updateReady: boolean; onU
       ))}
       <section className="card">
         <h2>Выгрузка</h2>
-        <p className="muted">Полный журнал ответов, версии банка, приоритеты Номира и сводка в одном JSON-файле.</p>
+        <p className="muted">Полный журнал ответов, версии банка, приоритеты Луми и сводка в одном JSON-файле.</p>
         <button type="button" className="button" disabled={exporting} onClick={() => void exportAll()}>
           Скачать выгрузку
         </button>
